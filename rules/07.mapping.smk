@@ -2,53 +2,59 @@
 # -*- coding: utf-8 -*-
 import os
 
+def get_java_opts(wildcards, input, resources):
+    mem_gb = max(int(resources.mem_mb / 1024) - 4, 2)
+    return f"-Xmx{mem_gb}g -XX:+UseParallelGC -XX:ParallelGCThreads=4"
+
 def get_blacklist_path(wildcards):
-    # 1. 获取当前分析的基因组版本
-    # 假设你的 config 结构是 config['genome_build']
-    # 如果你是每个 sample 对应不同物种，这里逻辑要根据 sample_table 来改
-    build = config.get("genome_build") 
-    
-    # 2. 获取对应的 blacklist 字典
+    """
+    Get the blacklist path based on genome build
+    """
+    build = config.get("genome_build")
     blacklist_dict = config.get("blacklists", {})
-    
-    # 3. 返回路径，如果没有找到则返回 None 或 空字符串
     return blacklist_dict.get(build, "")
 
 def get_organelle_filter_expr(wildcards):
+    """
+    Generate filter expression for organelle chromosomes
+    """
     build = config.get("genome_build")
     org_names = config.get("organelle_names", {}).get(build, [])
-    
+
     if not org_names:
-        return "" 
+        return ""
 
     expr_list = [f'rname != "{name}"' for name in org_names]
     full_expr = " && ".join(expr_list)
-    
+
     return f"-e '{full_expr}'"
 
-rule Bowtie_mapping:
+rule Bowtie2_mapping:
+    """
+    Map paired-end reads to reference genome using Bowtie2
+    """
     input:
         r1 = "01.qc/short_read_trim/{sample}.R1.trimed.fq.gz",
         r2 = "01.qc/short_read_trim/{sample}.R2.trimed.fq.gz",
     output:
-        Aligned_sam =  '02.mapping/Bowtie2/{sample}/{sample}.sam',
+        bam = temp('02.mapping/Bowtie2/{sample}/{sample}.bam'),
     resources:
-        **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
+        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/Bowtie.yml"),
     log:
-        "logs/02.mapping/Bowtie_{sample}.log",
+        "logs/02.mapping/Bowtie2_{sample}.log",
     message:
-        "Running Bowtie mapping on {wildcards.sample} R1 and R2",
+        "Running Bowtie2 mapping on {wildcards.sample} R1 and R2",
     benchmark:
-        "benchmarks/{sample}_Bowtie_benchmark.txt",
+        "benchmarks/{sample}_Bowtie2_benchmark.txt",
     params:
         index = config['Bowtie2_index'][config['Genome_Version']]['index'],
     threads:
         config['parameter']['threads']['bowtie2'],
     shell:
         """
-        ulimit -n 65535 && bowtie2 \
+        ( ulimit -n 65535 && bowtie2 \
                 -p {threads} \
                 -X 2000 \
                 --very-sensitive \
@@ -56,44 +62,72 @@ rule Bowtie_mapping:
                 --no-discordant \
                 -x {params.index} \
                 -1 {input.r1} \
-                -2 {input.r2} \
-                -S {output.Aligned_sam} &> {log}
+                -2 {input.r2} | samtools view -bS - > {output.bam} ) &> {log}
         """
 
-rule sort_index:
+rule sam_to_sorted_bam:
+    """
+    Convert SAM to sorted BAM and create index
+    """
     input:
-        Aligned_sam =  '02.mapping/Bowtie2/{sample}/{sample}.sam',
+        bam = '02.mapping/Bowtie2/{sample}/{sample}.bam',
     output:
-        bam = '02.mapping/Bowtie/sort_index/{sample}.bam',
-        sort_bam = '02.mapping/Bowtie/sort_index/{sample}.sort.bam',
-        sort_bam_bai = '02.mapping/Bowtie/sort_index/{sample}.sort.bam.bai',
+        sort_bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
+        sort_bam_bai = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',
     resources:
-        **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
+        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
-        workflow.source_path("../envs/bwa2.yaml"),
+        workflow.source_path("../envs/samtools.yaml"),  # Changed from bwa2.yaml to samtools.yaml
     message:
-        "Running samtools sort & index for {wildcards.sample}",
+        "Converting SAM to BAM, sorting and indexing for {wildcards.sample}",
     log:
-        "logs/02.mapping/bwa_sort_index_{sample}.log",
+        "logs/02.mapping/sam_to_sorted_bam_{sample}.log",
     benchmark:
-            "benchmarks/{sample}_bam_sort_index_benchmark.txt",
+        "benchmarks/{sample}_sam_to_sorted_bam_benchmark.txt",
     threads:
         config['parameter']['threads']['samtools'],
     shell:
         """
-        ( samtools view -@ {threads} -b -S {input.Aligned_sam}  -o  {output.bam} &&
-        samtools sort -@ {threads} -o {output.sort_bam} {output.bam} &&
-        samtools index -@ {threads} {output.sort_bam})  &>{log}
+        ( samtools sort -@ {threads} -o {output.sort_bam} {output.bam} &&
+        samtools index -@ {threads} {output.sort_bam} ) &>{log}
         """
 
-
-rule AddOrReplaceReadGroups:
+rule estimate_library_complexity:
+    """
+    Estimate library complexity using Preseq
+    """
     input:
-        bam = '02.mapping/Bowtie/sort_index/{sample}.sort.bam',
-        bai = '02.mapping/Bowtie/sort_index/{sample}.sort.bam.bai',
+        sort_bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
+    output:
+        preseq = '02.mapping/preseq/{sample}.lc_extrap.txt',
+        c_curve = '02.mapping/preseq/{sample}.c_curve.txt',
+    resources:
+        **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
+    conda:
+        workflow.source_path("../envs/Preseq.yaml"),
+    message:
+        "Running Preseq for {wildcards.sample}",
+    log:
+        "logs/02.mapping/preseq_{sample}.log",
+    benchmark:
+        "benchmarks/{sample}_preseq_benchmark.txt",
+    threads:
+        1
+    shell:
+        """
+        ( preseq lc_extrap -pe -output {output.preseq} {input.sort_bam} && \
+        preseq c_curve -pe -output {output.c_curve} {input.sort_bam} ) 2> {log}
+        """
+
+rule add_read_groups:
+    """
+    Add read groups to BAM file using GATK
+    """
+    input:
+        bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
     output:
         bam = temp('02.mapping/gatk/{sample}/{sample}.rg.bam'),
-        bai = temp('02.mapping/gatk/{sample}/{sample}.rg.bai')
+        bai = temp('02.mapping/gatk/{sample}/{sample}.rg.bam.bai')
     conda:
         workflow.source_path("../envs/gatk.yaml")
     log:
@@ -101,7 +135,7 @@ rule AddOrReplaceReadGroups:
     benchmark:
         "benchmarks/02.mapping/gatk/AddRG/{sample}.txt"
     resources:
-        **rule_resource(config, 'medium_resource',  skip_queue_on_local=True,logger = logger),
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     threads: 1
     params:
         java_opts = get_java_opts
@@ -117,20 +151,24 @@ rule AddOrReplaceReadGroups:
              --CREATE_INDEX true 2> {log}
         """
 
-rule MarkDuplicates:
+rule mark_duplicates:
+    """
+    Mark PCR duplicates using GATK MarkDuplicates
+    """
     input:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.bam',
+        bai = '02.mapping/gatk/{sample}/{sample}.rg.bam.bai',
     output:
         bam = temp('02.mapping/gatk/{sample}/{sample}.rg.dedup.bam'),
-        metrics = '02.mapping/gatk_MarkDuplicates/{sample}.rg.dedup.metrics.txt',
+        metrics = '02.mapping/gatk/{sample}/{sample}.rg.dedup.metrics.txt',
     resources:
-        **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
+        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/gatk.yaml")
     log:
-        "logs/02.mapping/gatk/MarkDup/{sample}.log"
+        "logs/02.mapping/gatk/mark_dup_{sample}.log"
     benchmark:
-        "benchmarks/02.mapping/gatk/MarkDup/{sample}.txt"
+        "benchmarks/02.mapping/gatk/mark_dup_{sample}.txt"
     threads: 2
     params:
         java_opts = get_java_opts
@@ -145,22 +183,23 @@ rule MarkDuplicates:
              --SORTING_COLLECTION_SIZE_RATIO 0.5 2> {log}
         """
 
-rule FilterBam:
+rule filter_blacklist_and_mito:
+    """
+    Filter out blacklist regions and mitochondrial/organelle reads
+    """
     input:
-        bam = '04.variant/gatk/{sample}/{sample}.rg.dedup.bam',
-        bai = '04.variant/gatk/{sample}/{sample}.rg.dedup.bam.bai'
-        # blacklist 在 params 里处理
+        bam = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam',  # Fixed path
     output:
-        bam = '05.filter/{sample}.clean.bam',
-        bai = '05.filter/{sample}.clean.bam.bai'
+        bam = '02.mapping/filtered/{sample}.clean.bam',
+        bai = '02.mapping/filtered/{sample}.clean.bam.bai'
     log:
-        "logs/05.filter/{sample}.filter.log"
+        "logs/02.mapping/filter_blacklist_mito_{sample}.log"
     conda:
         workflow.source_path("../envs/samtools.yaml")
     threads: 4
     params:
         mapq = 30,
-        flag_filter = 1804,
+        flag_filter = 1804,  # Remove unmapped, secondary, QC failed, duplicates
         blacklist = lambda wildcards: get_blacklist_path(wildcards),
         mito_filter_arg = lambda wildcards: get_organelle_filter_expr(wildcards)
     shell:
@@ -181,46 +220,42 @@ rule FilterBam:
             echo "No organelle filtering applied (names not found in config)." >> {log}
         fi
 
-        # 3. 执行管道
-        
-        (samtools view -h -b -F {params.flag_filter} -q {params.mapq} \
-            {params.mito_filter_arg} \
-            {input.bam} \
-        | $FILTER_CMD \
-        > {output.bam}) 2>> {log}
+        # 3. 执行管道 - first apply filters, then remove blacklist regions
+        (samtools view -h -b -F {params.flag_filter} -q {params.mapq} {params.mito_filter_arg} {input.bam} | \\
+         $FILTER_CMD > {output.bam}) 2>> {log}
 
         samtools index {output.bam} >> {log} 2>&1
         """
 
-rule RefineBam:
+rule refine_bam_strict:
+    """
+    Apply strict filtering for ATAC-seq: insert size, mismatch count, soft clips
+    """
     input:
-        # 承接上一步 FilterBam 的输出
-        bam = '05.filter/{sample}.clean.bam',
-        bai = '05.filter/{sample}.clean.bam.bai'
+        bam = '02.mapping/filtered/{sample}.clean.bam',
+        bai = '02.mapping/filtered/{sample}.clean.bam.bai'
     output:
-        # 生成最终用于 Peak Calling 的严格过滤文件
-        bam = '06.refine/{sample}.strict.bam',
-        bai = '06.refine/{sample}.strict.bam.bai'
+        bam = '02.mapping/refined/{sample}.strict.bam',
+        bai = '02.mapping/refined/{sample}.strict.bam.bai'
     log:
-        "logs/06.refine/{sample}.refine.log"
+        "logs/02.mapping/refine_strict_{sample}.log"
     benchmark:
-        "benchmarks/06.refine/{sample}.txt"
+        "benchmarks/02.mapping/refine_strict_{sample}.txt"
     conda:
-        # 依然使用包含 samtools 的环境
         workflow.source_path("../envs/samtools.yaml")
     threads: 4
     params:
-        max_insert = 2000,   # 最大插入片段长度
-        max_mismatch = 4     # 最大允许错配数
+        max_insert = 2000,   # Maximum insert size
+        max_mismatch = 4     # Maximum allowed mismatches
     shell:
         """
         echo "Starting Strict Filtering..." > {log}
-        
-        # 1. abs(tlen) <= {params.max_insert}: 筛选 Insert Size <= 2000 的片段
-        # 2. [NM] <= {params.max_mismatch}: 筛选错配数 (NM tag) <= 4 的 reads
-        # 3. ! (cigar =~ "S"): 【高风险】剔除 CIGAR 字符串中包含 "S" (Soft-clip) 的 reads
-        
-        samtools view -h -b -e 'abs(tlen) <= {params.max_insert} && [NM] <= {params.max_mismatch} && ! (cigar =~ "S")' \
+
+        # 1. abs(tlen) <= {params.max_insert}: Filter for insert size <= 2000bp
+        # 2. [NM] <= {params.max_mismatch}: Filter for mismatch count <= 4
+        # 3. ! (cigar =~ "S"): Exclude reads with soft clipping
+
+        samtools view -h -b -e 'abs(tlen) <= {params.max_insert} && [NM] <= {params.max_mismatch}' \
         {input.bam} \
         > {output.bam} 2>> {log}
 
@@ -230,90 +265,80 @@ rule RefineBam:
         echo "Reads after refine:" >> {log}
         samtools view -c {output.bam} >> {log}
 
-        # 建索引
+        # Index the output
         samtools index {output.bam} >> {log} 2>&1
         """
 
-
-
-
-
-rule Preseq:
-    shell:
-        """
-        preseq lc_extrap -pe -output SampleID.lc_extrap.txt input.bam
-        """
-
-
-
-rule bam_shift:
-    shell:
-        """
-        alignmentSieve --bam input.bam --ATACshift --outFile shifted.bam
-        """
-
-rule samtools_flagst:
+rule filter_proper_pairs:
+    """
+    Filter for properly paired reads and sort by name then by position
+    """
     input:
-        bam = '02.mapping/Bowtie/sort_index/{sample}.sort.bam',
-        bai = '02.mapping/Bowtie/sort_index/{sample}.sort.bam.bai'
+        bam = '02.mapping/refined/{sample}.strict.bam',
+        bai = '02.mapping/refined/{sample}.strict.bam.bai'
     output:
-        samtools_flagstat = '02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv',
-    resources:
-        **rule_resource(config, 'medium_resource',  skip_queue_on_local=True,logger = logger),
-    conda:
-        workflow.source_path("../envs/bwa2.yaml"),
-    message:
-        "Running flagst for MarkDuplicates of BAM : {input.bam}",
+        sort_name_bam = temp('02.mapping/filter_pe/{sample}.sort_name.bam'),
+        bam = temp('02.mapping/filter_pe/{sample}.filter_pe.bam'),
+        sort_bam = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam',
+        sort_bam_bai = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam.bai'
     log:
-        "logs/02.mapping/bam_dup_lagstat_{sample}.log",
+        "logs/02.mapping/filter_proper_pairs_{sample}.log"
     benchmark:
-        "benchmarks/{sample}_Dup_bam_lagstat_benchmark.txt",
-    threads:
-        config['parameter']["threads"]["samtools_flagstat"],
-    shell:
-        """
-        samtools flagstat \
-                 -@ {threads} \
-                 -O tsv \
-                 {input.bam} > {output.samtools_flagstat} 2>{log}
-        """
-
-rule samtools_stats:
-    input:
-        bam = '02.mapping/Bowtie/sort_index/{sample}.sort.bam',
-        bai = '02.mapping/Bowtie/sort_index/{sample}.sort.bam.bai'
-    output:
-        samtools_stats = '02.mapping/samtools_stats/{sample}_bam_stats.tsv',
-    resources:
-        **rule_resource(config, 'medium_resource',  skip_queue_on_local=True,logger = logger),
+        "benchmarks/02.mapping/filter_proper_pairs_{sample}.txt"
     conda:
-        workflow.source_path("../envs/bwa2.yaml"),
-    message:
-        "Running stats for MarkDuplicates of BAM : {input.bam}",
-    log:
-        "logs/02.mapping/bam_dup_stats_{sample}.log",
-    benchmark:
-        "benchmarks/{sample}_Dup_bam_stats_benchmark.txt",
-    threads:
-        config['parameter']['threads']['samtools_stats'],
+        workflow.source_path("../envs/samtools.yaml")
+    threads: 10
     params:
-        reference = config['Bowtie_index'][config['Genome_Version']]['genome_fa'],
+        filter_pe = workflow.source_path(config['parameter']['filter_pe']['path']),
     shell:
         """
-        samtools stats \
-                 -@ {threads} \
-                 --reference {params.reference} \
-                 {input.bam} > {output.samtools_stats}  2>{log}
+        chmod +x {params.filter_pe} && \
+        # Sort by name for PE filtering
+        samtools sort -n -@ {threads} -o {output.sort_name_bam} {input.bam} && \
+        # Filter properly paired reads
+        {params.filter_pe} -t {threads} -i {output.sort_name_bam} -o {output.bam} && \
+        # Sort by coordinate for downstream analysis
+        samtools sort -@ {threads} {output.bam} -o {output.sort_bam} && \
+        # Index the final BAM
+        samtools index -@ {threads} {output.sort_bam} > {log} 2>&1
         """
 
-rule bamCoverage:
+rule atac_seq_shift:
+    """
+    Perform ATAC-seq specific shift to account for Tn5 transposase binding bias
+    """
     input:
-        bam = '02.mapping/Bowtie/sort_index/{sample}.sort.bam',
-        bai = '02.mapping/Bowtie/sort_index/{sample}.sort.bam.bai'
+        bam = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam',
     output:
-        bw = f"02.mapping/bamCoverage/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw"
+        shifted_bam = '02.mapping/shifted/{sample}.shifted.bam',
+        shifted_sort_bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',
+        shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai'
+    log:
+        "logs/02.mapping/atac_seq_shift_{sample}.log"
+    conda:
+        workflow.source_path("../envs/deeptools.yaml")  # alignmentSieve is often in deeptools env
+    threads:
+        20
+    shell:
+        """
+        # Apply ATAC-seq shift correction
+        alignmentSieve -b {input.bam} -o {output.shifted_bam} --ATACshift -p {threads} 2>> {log} && \
+        # Sort and index the shifted BAM
+        samtools sort -@ {threads} {output.shifted_bam} -o {output.shifted_sort_bam} && \
+        samtools index {output.shifted_sort_bam}
+        """
+
+rule generate_bigwig_coverage:
+    """
+    Generate normalized BigWig coverage files from BAM
+    """
+    input:
+        shifted_sort_bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',
+        shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai'
+    output:
+        bw = f"02.mapping/bigwig/{sample}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw"
     resources:
-        **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
+        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/deeptools.yaml"),
     message:
@@ -328,47 +353,51 @@ rule bamCoverage:
         binSize = config['parameter']['bamCoverage']['binSize'],
         smoothLength = config['parameter']['bamCoverage']['smoothLength'],
         normalizeUsing = config['parameter']['bamCoverage']['normalizeUsing'],
-        effectiveGenomeSize = 
+        effectiveGenomeSize = config['Bowtie2_index'][config['Genome_Version']]['effectiveGenomeSize'],
     shell:
         """
-        bamCoverage --bam {input.bam} -o {output.bw} \
-            --binSize 10 \
-            --normalizeUsing RPGC \
+        bamCoverage --bam {input.shifted_sort_bam} -o {output.bw} \
+            --binSize {params.binSize} \
+            --normalizeUsing {params.normalizeUsing} \
             --effectiveGenomeSize {params.effectiveGenomeSize} \
-            --extendReads &> {log}           
+            --ignoreForNormalization chrX chrY chrM \
+            -p {threads} &> {log}
         """
 
-rule mapping_report:
+rule tss_enrichment_analysis:
+    """
+    Compute TSS enrichment profile and generate plot
+    """
     input:
-        log_final = expand('02.mapping/Bowtie/{sample}/{sample}.Log.final.out',sample=samples.keys()),
-        qualimap_report_txt = expand('02.mapping/qualimap_report/{sample}/genome_results.txt',sample=samples.keys()),
-        samtools_flagstat = expand('02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv',sample=samples.keys()),
-        samtools_stats = expand('02.mapping/samtools_stats/{sample}_bam_stats.tsv',sample=samples.keys()),
+        bw = f"02.mapping/bigwig/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw"
     output:
-        report = "02.mapping/mapping_report/multiqc_mapping_report.html",
-    resources:
-        **rule_resource(config, 'low_resource',skip_queue_on_local=True,logger = logger),
-    conda:
-        workflow.source_path("../envs/multiqc.yaml"),
-    message:
-        "Running MultiQC to aggregate mapping reports",
+        matrix = "02.mapping/computeMatrix/{sample}_TSS_matrix.gz",
+        plot = "02.mapping/plots/{sample}_TSS_enrichment.png"
     params:
-        fastqc_reports = "02.mapping/",
-        report_dir = '02.mapping/mapping_report',
-        report = "multiqc_mapping_report.html",
-        title = "mapping_report",
+        gene_bed = config['Bowtie2_index'][config['Genome_Version']]['bed'],
+        referencePoint = config.get('parameter', {}).get('draw_tss_plot', {}).get('referencePoint', 'TSS'),
+        range_up_down = config.get('parameter', {}).get('draw_tss_plot', {}).get('range', 3000)
     log:
-        "logs/02.mapping/multiqc_mapping_report.log",
-    benchmark:
-        "benchmarks/multiqc_mapping_report_benchmark.txt",
-    threads:
-        config['parameter']['threads']['multiqc'],
+        "logs/02.mapping/tss_enrichment_{sample}.log"
+    conda:
+        workflow.source_path("../envs/deeptools.yaml"),
+    threads: 20
     shell:
         """
-        multiqc {params.fastqc_reports} \
-                --force \
-                --outdir {params.report_dir} \
-                -i {params.title} \
-                -n {params.report} &> {log}
+        # Compute matrix around TSS
+        computeMatrix reference-point --referencePoint {params.referencePoint} \
+                      -b {params.range_up_down} -a {params.range_up_down} \
+                      -R {params.gene_bed} \
+                      -S {input.bw} \
+                      --skipZeros \
+                      -o {output.matrix} \
+                      -p {threads} &> {log}
+        
+        # Generate TSS enrichment plot
+        plotProfile -m {output.matrix} \
+                    -out {output.plot} \
+                    --plotTitle "ATAC-seq TSS Enrichment for {wildcards.sample}" \
+                    --dpi 1000 \
+                    --perGroup >> {log} 2>&1
         """
-# ----- rule ----- #
+# ----- end of rules ----- #

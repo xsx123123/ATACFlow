@@ -30,6 +30,8 @@ parameter:
     conf: ../src/src/fastq_screen/fastq_screen.conf
     subset: 100000
     aligner: Bowtie2
+  filter_pe:
+    path: ../src/src/ATACTools/filter_pe/target/release/filter_pe
   merge_rsem:
     path: ../src/src/gene_matrix/merge_rsem.py
     extension: .genes.results

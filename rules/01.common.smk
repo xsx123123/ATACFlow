@@ -33,72 +33,29 @@ def DataDeliver(config:dict = None) -> list:
     # merge qc
     data_deliver.append("01.qc/multiqc_merge_qc/multiqc_merge_qc_report.html")
     # mapping
-    data_deliver.extend(expand("02.mapping/STAR/sort_index/{sample}.sort.bam",
-                                          sample=samples.keys()))
-    data_deliver.extend(expand("02.mapping/STAR/sort_index/{sample}.sort.bam.bai",
-                                          sample=samples.keys()))
-    data_deliver.extend(expand("02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv",
-                                          sample=samples.keys()))
-    data_deliver.extend(expand("02.mapping/samtools_stats/{sample}_bam_stats.tsv",
-                                          sample=samples.keys()))
-    data_deliver.extend(expand("02.mapping/qualimap_report/{sample}/qualimapReport.html",
-                                          sample=samples.keys()))
-    data_deliver.extend(expand("02.mapping/qualimap_report/{sample}/genome_results.txt",
-                                          sample=samples.keys()))
-    # bamcoverage
-    data_deliver.extend(expand(f"02.mapping/bamCoverage/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw",
-                                          sample=samples.keys()))
-
-    data_deliver.append("02.mapping/mapping_report/multiqc_mapping_report.html")
-    # count
-    data_deliver.extend(expand("03.count/rsem/{sample}.genes.results",
-                                          sample=samples.keys()))
-    data_deliver.extend(expand("03.count/rsem/{sample}.isoforms.results",
-                                          sample=samples.keys()))           
-    data_deliver.append("03.count/multiqc_rsem_report.html")
-    data_deliver.append("03.count/merge_rsem_tpm.tsv")
-    data_deliver.append("03.count/merge_rsem_counts.tsv")
-    data_deliver.append("03.count/merge_rsem_fpkm.tsv")
-    data_deliver.append("03.count/rsem_ultimate/")
-    # DEG 
-    data_deliver.append("06.DEG/DESEQ2")
-    # Gene_Expression_Distribution
-    data_deliver.append('06.DEG/Gene_Expression/Gene_Expression_Distribution.pdf')
-    data_deliver.append('06.DEG/Gene_Expression/Gene_Expression_Distribution.png')
-    # heatmap
-    data_deliver.append('06.DEG/Heatmap_tpm/Heatmap_TopVar.pdf')
-    data_deliver.append('06.DEG/Heatmap_tpm/Heatmap_TopVar.png')
-    data_deliver.append('06.DEG/Heatmap_fpkm/Heatmap_TopVar.pdf')
-    data_deliver.append('06.DEG/Heatmap_fpkm/Heatmap_TopVar.png')
-    # call_variant
-    if config['call_variant']:
-        data_deliver.extend(expand("04.variant/gatk/{sample}/{sample}.final.pass.vcf",
-                                          sample=samples.keys()))
-        data_deliver.extend(expand("04.variant/gatk/{sample}/{sample}.final.pass.vcf.idx",
-                                          sample=samples.keys()))
-        data_deliver.extend(expand("04.variant/gatk_bcftools_stats_raw/{sample}.raw_variants.stats",
-                                          sample=samples.keys()))
-        data_deliver.extend(expand("04.variant/gatk_bcftools_stats_pass/{sample}.final.pass.stats",
-                                          sample=samples.keys()))
-        data_deliver.append('04.variant/multiqc_gatk_bcftools_stats_raw/multiqc_gatk_bcftools_stats_raw.html')
-        data_deliver.append('04.variant/multiqc_gatk_bcftools_stats_pass/multiqc_gatk_bcftools_stats_pass.html')
-    # noval Transcripts
-    if config['noval_Transcripts']:
-        data_deliver.append("05.assembly/filter/novel_transcripts.gtf")
-        data_deliver.append("05.assembly/filter/final_Novel_Isoforms.gtf")
-
-    # rmats
-    if config['rmats']:
-        # rmats single sample
-        data_deliver.extend(expand("07.AS/rmats_single/{sample}/SE.MATS.JC.txt",sample=samples.keys()))
-        data_deliver.extend(expand("07.AS/rmats_single/{sample}/MXE.MATS.JC.txt",sample=samples.keys()))
-        data_deliver.extend(expand("07.AS/rmats_single/{sample}/summary.txt",sample=samples.keys()))
-        # rmats pair sample
-        data_deliver.extend(expand("07.AS/rmats_pair/{contrast}/summary.txt", contrast=ALL_CONTRASTS))
-        data_deliver.extend(expand("07.AS/rmats_pair/{contrast}/SE.MATS.JC.txt", contrast=ALL_CONTRASTS))
-
-    data_deliver.append("07.Enrichments/")
-
+    data_deliver.extend(expand('02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',sample=samples.keys()))
+    data_deliver.extend(expand('02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',sample=samples.keys()))
+    data_deliver.extend(expand('02.mapping/preseq/{sample}.lc_extrap.txt',sample=samples.keys())),
+    data_deliver.extend(expand('02.mapping/preseq/{sample}.c_curve.txt',sample=samples.keys())),
+    data_deliver.extend(expand('02.mapping/filter_pe/{sample}.filter_pe.sorted.bam',sample=samples.keys())),
+    data_deliver.extend(expand('02.mapping/filter_pe/{sample}.filter_pe.sorted.bam.bai',sample=samples.keys())),
+    data_deliver.extend(expand('02.mapping/shifted/{sample}.shifted.sorted.bam',sample=samples.keys())),
+    data_deliver.extend(expand('02.mapping/shifted/{sample}.shifted.sorted.bam.bai',sample=samples.keys())),
+    data_deliver.extend(expand(f"02.mapping/bigwig/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw",sample=samples.keys())),
+    data_deliver.extend(expand('02.mapping/computeMatrix/{sample}_TSS_matrix.gz',sample=samples.keys())),
+    data_deliver.extend(expand('02.mapping/plots/{sample}_TSS_enrichment.png',sample=samples.keys())),
+    # macs2
+    data_deliver.extend(expand('03.peak_calling/MACS2/{sample}/{sample}_peaks.narrowPeak',sample=samples.keys()))
+    data_deliver.extend(expand('03.peak_calling/MACS2/{sample}/{sample}_peaks.xls',sample=samples.keys()))
+    data_deliver.extend(expand('03.peak_calling/MACS2/{sample}/{sample}_summits.bed',sample=samples.keys()))
+    data_deliver.extend(expand('03.peak_calling/MACS2/{sample}/{sample}_treat_pileup.bdg',sample=samples.keys()))
+    # HOMER
+    annotation = "03.peak_calling/HOMER/{sample}_annotation.txt",
+    stats = "03.peak_calling/HOMER/{sample}_stats.txt"
+    # count_matrix
+    counts = "04.consensus/raw_counts.txt",
+    counts_with_header = "04.consensus/consensus_counts_matrix.txt"
+    
     if config['print_target']:
        rich_print(data_deliver)
     return  data_deliver

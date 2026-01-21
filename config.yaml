@@ -4,22 +4,16 @@ species: 'Lsat Salinas'
 client: 内部测试
 # short read raw-data
 raw_data_path:
-  - /data/jzhang/project/Temp/PRJNA1224991_lettcue/00.raw_data
+  - /data/jzhang/project/Temp/atac_human_PRJNA427322/00.raw_data
 # short read samples info
-sample_csv: /data/jzhang/project/Temp/PRJNA1224991_lettcue/01.workflow/samples.csv
-paired_csv: /data/jzhang/project/Temp/PRJNA1224991_lettcue/01.workflow/contrasts.csv
+sample_csv: /data/jzhang/project/Temp/atac_human_PRJNA427322/01.workflow/samples.csv
+paired_csv: /data/jzhang/project/Temp/atac_human_PRJNA427322/01.workflow/contrasts.csv
 # workflow
-workflow: /data/jzhang/project/Temp/PRJNA1224991_lettcue/01.workflow
+workflow: /data/jzhang/project/Temp/atac_human_PRJNA427322/01.workflow
 # RNAflow Output file
-data_deliver: /data/jzhang/project/Temp/PRJNA1224991_lettcue/02.data_deliver
+data_deliver: /data/jzhang/project/Temp/atac_human_PRJNA427322/02.data_deliver
 # wheather run in HPC Cluster
 execution_mode: local #local,cluster
 queue_id: default
 # Fragment Library Types
 Library_Types: fr-firststrand # fr-unstranded,fr-firststrand,fr-secondstrand
-# wheather call variant for RNA-seq
-call_variant: true
-# Detech Noval Transcripts by stringtie
-noval_Transcripts: true
-# rmats
-rmats: true

@@ -56,9 +56,7 @@ include: 'rules/04.short_read_qc.smk'
 include: 'rules/05.Contamination_check.smk'
 include: 'rules/06.short_read_clean.smk'
 include: 'rules/07.mapping.smk'
-include: 'rules/14.Merge_qc.smk'
-include: 'rules/15.deliver.smk'
-include: 'rules/16.Report.smk'
+include: 'rules/08.MACS2.smk'
 # --------- 5. Target Rule --------- #
 rule all:
     input:

@@ -55,18 +55,6 @@ properties:
     description: "Fragment library type"
     enum: ["fr-unstranded", "fr-firststrand", "fr-secondstrand"]
     default: "fr-firststrand"
-  call_variant:
-    type: "boolean"
-    description: "Whether to call variants for RNA-seq"
-    default: false
-  noval_Transcripts:
-    type: "boolean"
-    description: "Whether to detect novel transcripts by stringtie"
-    default: false
-  rmats:
-    type: "boolean"
-    description: "Whether to run rmats analysis"
-    default: true
   parameter:
     type: "object"
     description: "Software parameters configuration"
