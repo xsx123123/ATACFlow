@@ -1,0 +1,18 @@
+# softeware path
+software:
+  json_md5_verifier: ../src/src/md5/Compile_release/json_md5_verifier_x86_64/release/json_md5_verifier
+  seq_preprocessor: ../src/src/md5/Compile_release/seq_preprocessor_x86_64/release/seq_preprocessor
+  check_libtype: ../src/src/library_type/check_libtype.py
+# md5
+raw_data:
+  md5: 'md5.txt'
+# Other parameter
+print_target: false
+print_sample: false
+log_level: INFO
+bam_remove: true
+convert_md5: 'link_dir'
+r1_suffix: _R1.fq.g【z
+r2_suffix: _R2.fq.gz
+md5: MD5.txt
+pipeline_version: "RNAFlow v0.1.6"
