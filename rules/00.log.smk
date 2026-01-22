@@ -12,7 +12,7 @@ from snakemake_logger_plugin_rich_loguru import get_analysis_logger
 logger = get_analysis_logger()
 
 # Log essential runtime information at the start
-logger.info("[bold blue]RNAFlow Pipeline Started[/bold blue]")
+logger.info("[bold blue]ATACFlow Pipeline Started[/bold blue]")
 logger.info(f"Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 logger.info(f"System: {platform.system()} {platform.release()}")
 logger.info(f"Python Version: {platform.python_version()}")

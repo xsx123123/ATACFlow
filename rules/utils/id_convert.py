@@ -79,7 +79,7 @@ def load_samples(csv_path, required_cols=None, index_col="sample") -> Tuple[bool
 
         # 自动构建 BAM 路径
         df['bam'] = df[index_col].apply(
-            lambda x: f"02.mapping/STAR/sort_index/{x}.sort.bam"
+            lambda x: f"02.mapping/Bowtie2/{x}/{x}.sorted.bam"
         )
 
         samples_dict = df.set_index(index_col, drop=False).to_dict(orient="index")

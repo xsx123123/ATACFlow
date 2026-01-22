@@ -67,6 +67,23 @@ def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> li
         data_deliver.extend(expand("03.peak_calling/MERGE_HOMER/{group}_stats.txt",group = groups.keys()))
         data_deliver.append("04.consensus/raw_counts.txt")
         data_deliver.append("04.consensus/consensus_counts_matrix.txt")
+        # TOBIAS motif analysis results
+        data_deliver.extend(expand("06.motif_analysis/01.formatted_peaks/{group}_peaks_formatted.bed", group=groups.keys()))
+        data_deliver.extend(expand("06.motif_analysis/02.signal_corrected/{group}_corrected.bw", group=groups.keys()))
+        data_deliver.extend(expand("06.motif_analysis/02.signal_corrected/{group}_atacorrect_stats.txt", group=groups.keys()))
+        data_deliver.extend(expand("06.motif_analysis/03.footprints/{group}_footprints.bw", group=groups.keys()))
+        data_deliver.extend(expand("06.motif_analysis/03.footprints/{group}_occurrences.bed", group=groups.keys()))
+        data_deliver.extend(expand("06.motif_analysis/04.bindetect/{group}/{group}_BINDetect_plot.pdf", group=groups.keys()))
+        # TOBIAS differential motif analysis results
+        if ALL_CONTRASTS and CONTRAST_MAP:
+            data_deliver.extend(expand("06.motif_analysis/05.differential_motifs/{contrast}_vs_{treatment}/differential_tf_binding.txt",
+                                     zip, contrast=ALL_CONTRASTS, treatment=CONTRAST_MAP))
+            data_deliver.extend(expand("06.motif_analysis/05.differential_motifs/{contrast}_vs_{treatment}/volcano_plot.pdf",
+                                     zip, contrast=ALL_CONTRASTS, treatment=CONTRAST_MAP))
+            data_deliver.extend(expand("06.motif_analysis/05.differential_motifs/{contrast}_vs_{treatment}/ma_plot.pdf",
+                                     zip, contrast=ALL_CONTRASTS, treatment=CONTRAST_MAP))
+        data_deliver.extend(["06.motif_analysis/06.final_report/differential_motif_analysis_report.txt",
+                           "06.motif_analysis/06.final_report/differential_motif_analysis_summary.html"])
 
     if config['print_target']:
        rich_print(data_deliver)

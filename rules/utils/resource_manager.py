@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Resource Manager for RNAFlow Pipeline
+Resource Manager for ATACFlow Pipeline
 
 This module provides utilities to manage resource configurations for different
 rules in the Snakemake workflow. It allows defining named resource profiles

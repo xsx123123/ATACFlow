@@ -17,7 +17,7 @@ rule delivery:
         workflow.source_path("../envs/py3.12.yaml"),
     params:
         out_dir = config['data_deliver'],
-        config_path = workflow.source_path(config['parameter']['RNAFlow_Deliver_Tool']['config_path']),
+        config_path = workflow.source_path(config['parameter']['ATACFlow_Deliver_Tool']['config_path']),
         source_dir = config['workflow'],
     log:
         "logs/delivery.log",
@@ -49,7 +49,7 @@ rule delivery_report:
         workflow.source_path("../envs/py3.12.yaml"),
     params:
         out_dir =  os.path.join(config['data_deliver'],'report_data'),
-        config_path = workflow.source_path(config['parameter']['RNAFlow_Deliver_Tool']['config_path_report']),
+        config_path = workflow.source_path(config['parameter']['ATACFlow_Deliver_Tool']['config_path_report']),
         source_dir = config['workflow'],
     log:
         "logs/delivery_report.log",

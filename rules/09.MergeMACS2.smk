@@ -1,7 +1,6 @@
 #!/usr/bin/snakemake
 # -*- coding: utf-8 -*-
 import os
-
 rule merge_shifted_bams:
     """
     根据分组信息 (GROUPS 字典) 合并对应的 Shifted BAM 文件
