@@ -306,15 +306,11 @@ rule filter_proper_pairs:
         filter_pe = workflow.source_path(config['parameter']['filter_pe']['path']),
     shell:
         """
-        chmod +x {params.filter_pe} && \
-        # Sort by name for PE filtering
+         ( chmod +x {params.filter_pe} && \
         samtools sort -n -@ {threads} -o {output.sort_name_bam} {input.bam} && \
-        # Filter properly paired reads
         {params.filter_pe} -t {threads} -i {output.sort_name_bam} -o {output.bam} && \
-        # Sort by coordinate for downstream analysis
         samtools sort -@ {threads} {output.bam} -o {output.sort_bam} && \
-        # Index the final BAM
-        samtools index -@ {threads} {output.sort_bam} > {log} 2>&1
+        samtools index -@ {threads} {output.sort_bam} ) > {log} 2>&1
         """
 
 rule atac_seq_shift:
@@ -356,7 +352,7 @@ rule generate_bigwig_coverage:
     conda:
         workflow.source_path("../envs/deeptools.yaml"),
     message:
-        "Running bamCoverage (bigwig generation) for {input.bam}"
+        "Running bamCoverage (bigwig generation) for {input.shifted_sort_bam}"
     log:
         "logs/02.mapping/bamCoverage_{sample}.log",
     benchmark:

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Dict, Union
 from rich import print as rich_print
 # Target rule function
-def DataDeliver(config:dict = None) -> list:
+def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> list:
     """
     This function performs Bioinformation analysis on the input configuration
     and returns a list of results.
@@ -56,6 +56,17 @@ def DataDeliver(config:dict = None) -> list:
     # count_matrix
     counts = "04.consensus/raw_counts.txt",
     counts_with_header = "04.consensus/consensus_counts_matrix.txt"
+    if merge_group:
+        data_deliver.extend(expand("02.mapping/merged/{group}.merged.bam",group = groups.keys()))
+        data_deliver.extend(expand("02.mapping/merged/{group}.merged.bam.bai",group = groups.keys()))
+        data_deliver.extend(expand("03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.narrowPeak",group = groups.keys()))
+        data_deliver.extend(expand("03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.xls",group = groups.keys()))
+        data_deliver.extend(expand("03.peak_calling/MERGE_MACS2/{group}/{group}_summits.bed",group = groups.keys()))
+        data_deliver.extend(expand("03.peak_calling/MERGE_MACS2/{group}/{group}_treat_pileup.bdg",group = groups.keys()))
+        data_deliver.extend(expand("03.peak_calling/MERGE_HOMER/{group}_annotation.txt",group = groups.keys()))
+        data_deliver.extend(expand("03.peak_calling/MERGE_HOMER/{group}_stats.txt",group = groups.keys()))
+        data_deliver.append("04.consensus/raw_counts.txt")
+        data_deliver.append("04.consensus/consensus_counts_matrix.txt")
 
     if config['print_target']:
        rich_print(data_deliver)

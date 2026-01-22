@@ -27,7 +27,9 @@ Bowtie2_index:
       genome_gff: hg38/gencode.v49.annotation.gff3
       bed: hg38/gencode.v49.annotation.bed12
       go_annotation: hg38/goa_human.go
+      tss_bed:  hg38/gencode.v49.annotation_tss.bed
       blacklists: hg38/hg38-blacklist.v2.bed
+      autosomes: hg38/hg38_autosomes.txt
       ploidy: 2
     GO:
       obo: go_database/go-basic.obo

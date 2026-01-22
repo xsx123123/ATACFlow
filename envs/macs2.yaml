@@ -72,18 +72,16 @@ dependencies:
   - libxcb=1.17.0=h8a09558_0
   - libxcrypt=4.4.36=hd590300_1
   - libzlib=1.3.1=hb9d3cd8_2
-  - macs2=2.2.9.1=py311haab0aaa_5
   - make=4.4.1=hb9d3cd8_2
   - ncurses=6.5=h2d0b736_3
-  - numpy=2.4.1=py311h2e04523_0
   - openssl=3.6.0=h26f9b46_0
   - pango=1.56.4=hadf4263_0
   - pcre2=10.47=haa7fec5_0
-  - pip=25.3=pyh8b19718_0
+  - pip=25.2=pyh8b19718_0
   - pixman=0.46.4=h54a6638_1
   - pthread-stubs=0.4=hb9d3cd8_1002
-  - python=3.11.14=hd63d673_2_cpython
-  - python_abi=3.11=8_cp311
+  - python=3.9.23=hc30ae73_0_cpython
+  - python_abi=3.9=8_cp39
   - r-base=4.5.2=h835929b_3
   - readline=8.3=h853b02a_0
   - sed=4.9=h6688a6e_0
@@ -102,5 +100,5 @@ dependencies:
   - xorg-libxrender=0.9.12=hb9d3cd8_0
   - xorg-libxt=1.3.1=hb9d3cd8_0
   - zstd=1.5.7=hb78ec9c_6
-
-prefix: "/home/jzhang/.local/share/mamba/envs/macs2"
+  - pip:
+      - macs2
