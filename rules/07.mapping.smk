@@ -11,7 +11,7 @@ def get_blacklist_path(wildcards):
     Get the blacklist path based on genome build
     """
     build = config.get("Genome_Version")
-    blacklist_dict = config.get('Bowtie2_index',{}).get('Genome_Version',{}).get("blacklists", {})
+    blacklist_dict = config.get('Bowtie2_index',{}).get(build,{}).get("blacklists", {})
 
     if not blacklist_dict:
         return ""
