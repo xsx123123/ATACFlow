@@ -53,7 +53,7 @@ parameter:
   qc_rsem_ultimate:
     path: ../src/src/gene_matrix/qc_rsem_ultimate.py
   trim:
-    length_required: 75
+    length_required: 25
     quality_threshold: 25
     adapter_fasta: "../data/Universal_Adapter.fa"
   RNAFlow_Deliver_Tool:

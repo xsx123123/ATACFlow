@@ -21,18 +21,27 @@ def get_blacklist_path(wildcards):
 
 def get_organelle_filter_expr(wildcards):
     """
-    Generate filter expression for organelle chromosomes
+    同时获取线粒体 (chrMID) 和叶绿体 (plast) 并生成 samtools 过滤表达式
     """
     build = config.get("Genome_Version")
-    org_names = config.get("genome_info", {}).get(build, []).get("chrMID", [])
+    genome_cfg = config.get("genome_info", {}).get(build, {})
+    
+    org_list = []
+    for key in ["chrMID", "plast"]:
+        val = genome_cfg.get(key)
+        if val:
+            if isinstance(val, list):
+                org_list.extend(val)
+            else:
+                org_list.append(val)
 
-    if not org_names:
+    if not org_list:
         return ""
 
-    expr_list = [f'rname != "{name}"' for name in org_names]
+    expr_list = [f'rname != "{name}"' for name in org_list]
     full_expr = " && ".join(expr_list)
 
-    return f"-e '{full_expr}'"
+    return f'-e \'{full_expr}\''
 
 rule Bowtie2_mapping:
     """
@@ -121,8 +130,10 @@ rule estimate_library_complexity:
         1
     shell:
         """
-        ( preseq lc_extrap -pe -output {output.preseq} {input.sort_bam} && \
-        preseq c_curve -pe -output {output.c_curve} {input.sort_bam} ) 2> {log}
+        exec 2> {log}
+        set -x
+        preseq lc_extrap -pe -v -output {output.preseq} -B {input.sort_bam}
+        preseq c_curve -pe -v -output {output.c_curve} -B  {input.sort_bam}
         """
 
 rule add_read_groups:
@@ -134,7 +145,6 @@ rule add_read_groups:
         sort_bai = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',
     output:
         bam = temp('02.mapping/gatk/{sample}/{sample}.rg.bam'),
-        bai = temp('02.mapping/gatk/{sample}/{sample}.rg.bam.bai')
     conda:
         workflow.source_path("../envs/gatk.yaml")
     log:
@@ -164,7 +174,6 @@ rule mark_duplicates:
     """
     input:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.bam',
-        bai = '02.mapping/gatk/{sample}/{sample}.rg.bam.bai',
     output:
         bam = temp('02.mapping/gatk/{sample}/{sample}.rg.dedup.bam'),
         metrics = '02.mapping/gatk/{sample}/{sample}.rg.dedup.metrics.txt',
@@ -234,55 +243,53 @@ rule filter_blacklist_and_mito:
         samtools index {output.bam} >> {log} 2>&1
         """
 
-rule refine_bam_strict:
-    """
-    Apply strict filtering for ATAC-seq: insert size, mismatch count, soft clips
-    """
-    input:
-        bam = '02.mapping/filtered/{sample}.clean.bam',
-        bai = '02.mapping/filtered/{sample}.clean.bam.bai'
-    output:
-        bam = '02.mapping/refined/{sample}.strict.bam',
-        bai = '02.mapping/refined/{sample}.strict.bam.bai'
-    log:
-        "logs/02.mapping/refine_strict_{sample}.log"
-    benchmark:
-        "benchmarks/02.mapping/refine_strict_{sample}.txt"
-    conda:
-        workflow.source_path("../envs/samtools.yaml")
-    threads: 4
-    params:
-        max_insert = 2000,   # Maximum insert size
-        max_mismatch = 4     # Maximum allowed mismatches
-    shell:
-        """
-        echo "Starting Strict Filtering..." > {log}
-
-        # 1. abs(tlen) <= {params.max_insert}: Filter for insert size <= 2000bp
-        # 2. [NM] <= {params.max_mismatch}: Filter for mismatch count <= 4
-        # 3. ! (cigar =~ "S"): Exclude reads with soft clipping
-
-        samtools view -h -b -e 'abs(tlen) <= {params.max_insert} && [NM] <= {params.max_mismatch}' \
-        {input.bam} \
-        > {output.bam} 2>> {log}
-
-        echo "------------------------------------------------" >> {log}
-        echo "Reads before refine:" >> {log}
-        samtools view -c {input.bam} >> {log}
-        echo "Reads after refine:" >> {log}
-        samtools view -c {output.bam} >> {log}
-
-        # Index the output
-        samtools index {output.bam} >> {log} 2>&1
-        """
+# rule refine_bam_strict:
+#    """
+#    Apply strict filtering for ATAC-seq: insert size, mismatch count, soft clips
+#    """
+#    input:
+#        bam = '02.mapping/filtered/{sample}.clean.bam',
+#        bai = '02.mapping/filtered/{sample}.clean.bam.bai'
+#   output:
+#        bam = '02.mapping/refined/{sample}.strict.bam',
+#        bai = '02.mapping/refined/{sample}.strict.bam.bai'
+#    log:
+#        "logs/02.mapping/refine_strict_{sample}.log"
+#    benchmark:
+#        "benchmarks/02.mapping/refine_strict_{sample}.txt"
+#    conda:
+#        workflow.source_path("../envs/samtools.yaml")
+#    threads: 4
+#    params:
+#        max_insert = 2000,   # Maximum insert size
+#        max_mismatch = 4     # Maximum allowed mismatches
+#    shell:
+#        """
+#        echo "Starting Strict Filtering..." > {log}
+#
+#        samtools view -h -b -F 4 -@ {threads} \
+#        -e 'abs(tlen) <= {params.max_insert} && [NM] <= {params.max_mismatch} && ! (cigar =~ "S")' \
+#        {input.bam} \
+#        > {output.bam} 2>> {log}
+#
+#        echo "------------------------------------------------" >> {log}
+#        echo "Reads before refine:" >> {log}
+#        samtools view -c {input.bam} >> {log}
+#        
+#        echo "Reads after refine:" >> {log}
+#        samtools view -c {output.bam} >> {log}
+#
+#        # Index the output
+#        samtools index -@ {threads} {output.bam} >> {log} 2>&1
+#        """
 
 rule filter_proper_pairs:
     """
     Filter for properly paired reads and sort by name then by position
     """
     input:
-        bam = '02.mapping/refined/{sample}.strict.bam',
-        bai = '02.mapping/refined/{sample}.strict.bam.bai'
+        bam = '02.mapping/filtered/{sample}.clean.bam',
+        bai = '02.mapping/filtered/{sample}.clean.bam.bai'
     output:
         sort_name_bam = temp('02.mapping/filter_pe/{sample}.sort_name.bam'),
         bam = temp('02.mapping/filter_pe/{sample}.filter_pe.bam'),

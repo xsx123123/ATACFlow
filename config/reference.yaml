@@ -34,6 +34,8 @@ Bowtie2_index:
 genome_info:
   Lsat_Salinas_v11:
     effectiveGenomeSize: 2590369317
+    chrMID: NC_042756.1
+    plast: NC_007578.1
   hg38:
     effectiveGenomeSize: 3291585349
     chrMID: 'chrM'
