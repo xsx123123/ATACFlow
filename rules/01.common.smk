@@ -41,7 +41,8 @@ def DataDeliver(config:dict = None) -> list:
     data_deliver.extend(expand('02.mapping/filter_pe/{sample}.filter_pe.sorted.bam.bai',sample=samples.keys())),
     data_deliver.extend(expand('02.mapping/shifted/{sample}.shifted.sorted.bam',sample=samples.keys())),
     data_deliver.extend(expand('02.mapping/shifted/{sample}.shifted.sorted.bam.bai',sample=samples.keys())),
-    data_deliver.extend(expand(f"02.mapping/bigwig/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw",sample=samples.keys())),
+    data_deliver.extend(expand(f"02.mapping/bamCoverage/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw",
+                                          sample=samples.keys()))
     data_deliver.extend(expand('02.mapping/computeMatrix/{sample}_TSS_matrix.gz',sample=samples.keys())),
     data_deliver.extend(expand('02.mapping/plots/{sample}_TSS_enrichment.png',sample=samples.keys())),
     # macs2
@@ -55,7 +56,7 @@ def DataDeliver(config:dict = None) -> list:
     # count_matrix
     counts = "04.consensus/raw_counts.txt",
     counts_with_header = "04.consensus/consensus_counts_matrix.txt"
-    
+
     if config['print_target']:
        rich_print(data_deliver)
     return  data_deliver

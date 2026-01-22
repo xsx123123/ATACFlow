@@ -32,22 +32,17 @@ load_user_config(config, cmd_arg_name='analysisyaml')
 resolve_reference_paths(config,
                         config.get('can_use_genome_version', []),
                         base_path=config.get('reference_path'))
-
 # Validate schema and file existence
 validate(config, "schema/config.schema.yaml")
 check_reference_paths(config.get("STAR_index", {}))
-
 # Get logger instance for validation
 from snakemake_logger_plugin_rich_loguru import get_analysis_logger
 logger = get_analysis_logger()
 validate_genome_version(config=config, logger=logger)
-
 # --------- 3. Workspaces & Samples --------- #
 workdir: config["workflow"]
-
 samples = load_samples(config["sample_csv"], required_cols=["sample", "sample_name", "group"])
 ALL_CONTRASTS, CONTRAST_MAP = load_contrasts(config["paired_csv"], samples)
-
 # --------- 4. Rules Import --------- #
 include: 'rules/00.log.smk'
 include: 'rules/01.common.smk'
@@ -57,15 +52,8 @@ include: 'rules/05.Contamination_check.smk'
 include: 'rules/06.short_read_clean.smk'
 include: 'rules/07.mapping.smk'
 include: 'rules/08.MACS2.smk'
+include: 'rules/14.Merge_qc.smk'
 # --------- 5. Target Rule --------- #
 rule all:
     input:
-        DataDeliver(config=config),
-        os.path.join(config['data_deliver'],'delivery_manifest.json'),
-        os.path.join(config['data_deliver'],'delivery_manifest.md5'),
-        os.path.join(config['data_deliver'],'delivery_details.log'),
-        os.path.join(config['data_deliver'], "report_data/project_summary.json"),
-        os.path.join(config['data_deliver'],'report_data','delivery_manifest.json'),
-        os.path.join(config['data_deliver'],'report_data','delivery_manifest.md5'),
-        os.path.join(config['data_deliver'],'report_data','delivery_details.log'),
-        os.path.join(config['data_deliver'], "Analysis_Report/index.html"),
+        DataDeliver(config=config)

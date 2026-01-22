@@ -38,14 +38,14 @@ def resolve_reference_paths(config, targets, base_path=None):
     # logger.info(f"正在批量更新参考基因组路径: {genome_list} (Base: {root_dir})")
 
     # 2. 循环处理列表中的每一个基因组版本
-    star_index_config = config.get("STAR_index", {})
+    star_index_config = config.get("Bowtie2_index", {})
 
     for version in genome_list:
         ref_dict = star_index_config.get(version)
 
         # 如果这个版本在 STAR_index 里不存在，就跳过
         if not ref_dict:
-            logger.warning(f"{version} 未在 STAR_index 中定义，跳过。")
+            logger.warning(f"{version} 未在 Bowtie2_index 中定义，跳过。")
             continue
 
         # 3. 更新路径

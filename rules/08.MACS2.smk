@@ -1,3 +1,7 @@
+#!/usr/bin/snakemake
+# -*- coding: utf-8 -*-
+import os
+
 rule macs2_callpeak:
     """
     Call peaks using MACS2 on the shifted BAM file.
@@ -11,19 +15,24 @@ rule macs2_callpeak:
         xls = "03.peak_calling/MACS2/{sample}/{sample}_peaks.xls",
         summits = "03.peak_calling/MACS2/{sample}/{sample}_summits.bed",
         bdg = "03.peak_calling/MACS2/{sample}/{sample}_treat_pileup.bdg"
-    log:
-        "logs/03.peak_calling/macs2_{sample}.log"
-    benchmark:
-        "benchmarks/03.peak_calling/macs2_{sample}.txt"
+    resources:
+        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
-        workflow.source_path("../envs/macs2.yaml")
-    threads: 1
+        workflow.source_path("../envs/macs2.yaml"),
+    log:
+        "logs/03.peak_calling/macs2_{sample}.log",
+    message:
+        "Running MACS2 peak calling for {wildcards.sample}",
+    benchmark:
+        "benchmarks/03.peak_calling/macs2_{sample}.txt",
+    threads: 
+        1
     params:
-        gsize = config.get('parameter', {}).get('macs2', {}).get('gsize', 'hs'),
-        qvalue = config.get('parameter', {}).get('macs2', {}).get('qvalue', 0.05),
+        gsize = config['genome_info'][config['Genome_Version']]['effectiveGenomeSize'],
+        qvalue = config['parameter']['macs2']['qvalue'],
         outdir = "03.peak_calling/MACS2/{sample}"
     shell:
-        """        
+        """
         macs2 callpeak \
             -t {input.bam} \
             -f BAMPE \
@@ -44,20 +53,26 @@ rule homer_annotate_peaks:
     output:
         annotation = "03.peak_calling/HOMER/{sample}_annotation.txt",
         stats = "03.peak_calling/HOMER/{sample}_stats.txt"
+    resources:
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
-        workflow.source_path("../envs/homer.yaml")
+        workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/03.peak_calling/homer_{sample}.log"
-    threads: 1
+        "logs/03.peak_calling/homer_{sample}.log",
+    message:
+        "Running HOMER annotation for {wildcards.sample}",
+    benchmark:
+        "benchmarks/03.peak_calling/homer_{sample}.txt",
+    threads: config['parameter']['threads']['homer']
     params:
-        gtf = config['genome']['gtf'],
-        genome_fasta = config['genome']['fasta']
+        gtf = config['Bowtie2_index'][config['Genome_Version']]['gene_gtf'],
+        genome_fasta = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
     shell:
-        """        
+        """
         annotatePeaks.pl {input.peak} {params.genome_fasta} \
             -gtf {params.gtf} \
             -annStats {output.stats} \
-            > {output.annotation} 2> {log}
+            -p {threads} > {output.annotation} 2> {log}
         """
 
 rule create_consensus_peakset:
@@ -69,10 +84,17 @@ rule create_consensus_peakset:
         peaks = expand("03.peak_calling/MACS2/{sample}/{sample}_peaks.narrowPeak", sample=samples.keys())
     output:
         consensus = "04.consensus/consensus_peaks.bed"
+    resources:
+        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
-        workflow.source_path("../envs/bedtools.yaml")
+        workflow.source_path("../envs/bedtools.yaml"),
     log:
-        "logs/04.consensus/merge_peaks.log"
+        "logs/04.consensus/merge_peaks.log",
+    message:
+        "Creating consensus peakset from all samples",
+    benchmark:
+        "benchmarks/04.consensus/merge_peaks.txt",
+    threads: config['parameter']['threads']['bedtools']
     shell:
         """
         cat {input.peaks} | \
@@ -88,15 +110,22 @@ rule generate_count_matrix:
     """
     input:
         consensus = "04.consensus/consensus_peaks.bed",
-        bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=SAMPLES),
-        bais = expand("02.mapping/shifted/{sample}.shifted.sorted.bam.bai", sample=SAMPLES)
+        bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys()),
+        bais = expand("02.mapping/shifted/{sample}.shifted.sorted.bam.bai", sample=samples.keys())
     output:
         counts = "04.consensus/raw_counts.txt",
         counts_with_header = "04.consensus/consensus_counts_matrix.txt"
+    resources:
+        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
-        workflow.source_path("../envs/bedtools.yaml")
+        workflow.source_path("../envs/bedtools.yaml"),
     log:
-        "logs/04.consensus/multicov.log"
+        "logs/04.consensus/multicov.log",
+    message:
+        "Generating count matrix from consensus peaks and BAM files",
+    benchmark:
+        "benchmarks/04.consensus/multicov.txt",
+    threads: config['parameter']['threads']['bedtools']
     params:
         sample_names = samples.keys()
     shell:
@@ -106,10 +135,11 @@ rule generate_count_matrix:
         # -bed 输入 consensus bed
         echo "Running multicov..." > {log}
         bedtools multicov -bams {input.bams} -bed {input.consensus} > {output.counts} 2>> {log}
-        
+
         # 2. 添加表头 (Header) 让文件更易读
         # multicov 的输出前三列是 chrom, start, end，后面跟着每个 BAM 的计数
-        
+
         HEADER="chrom\tstart\tend\t"$(echo "{params.sample_names}" | sed 's/ /\t/g')
         echo -e "$HEADER" | cat - {output.counts} > {output.counts_with_header}
         """
+# ----- end of rules ----- #

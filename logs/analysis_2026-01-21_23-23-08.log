@@ -1,0 +1,3 @@
+2026-01-21 23:23:08 | INFO     | snakemake_logger_plugin_rich_loguru.utils:setup_analysis_logging:73 | [bold green]Analysis Script Initialized[/bold green]
+2026-01-21 23:23:08 | INFO     | snakemake_logger_plugin_rich_loguru.utils:setup_analysis_logging:74 | Log file: logs/analysis_2026-01-21_23-23-08.log
+2026-01-21 23:23:09 | ERROR    | rules.utils.validate:validate_genome_version:176 | Unsupported genome version: 'GRCm39'. Supported versions are: ['Lsat_Salinas_v11', 'hg38', 'GO']

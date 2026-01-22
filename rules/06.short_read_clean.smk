@@ -1,8 +1,11 @@
 #!/usr/bin/snakemake
 # -*- coding: utf-8 -*-
 import os
-# ----- rule ----- #
+
 rule short_read_fastp:
+    """
+    Trim adapters and filter low-quality reads using Fastp
+    """
     input:
         md5_check = "01.qc/md5_check.tsv",
         link_r1_dir =  os.path.join("00.raw_data",
@@ -21,16 +24,16 @@ rule short_read_fastp:
     conda:
         workflow.source_path("../envs/fastp.yaml"),
     log:
-        "logs/01.short_read_trim/{sample}.trimed.log",
+        "logs/01.qc/fastp_{sample}.log",
     message:
         "Running Fastp on {wildcards.sample} r1 and {wildcards.sample} r2",
     benchmark:
-        "benchmarks/{sample}_fastp_benchmark.txt",
+        "benchmarks/01.qc/fastp_{sample}.txt",
     params:
         length_required = config['parameter']["trim"]["length_required"],
         quality_threshold = config['parameter']["trim"]["quality_threshold"],
         adapter_fasta = workflow.source_path(config['parameter']["trim"]["adapter_fasta"]),
-    threads: 
+    threads:
         config['parameter']["threads"]["fastp"],
     shell:
         """
@@ -46,6 +49,9 @@ rule short_read_fastp:
         """
 
 rule multiqc_trim:
+    """
+    Run MultiQC to aggregate fastp trimming reports
+    """
     input:
         md5_check = "01.qc/md5_check.tsv",
         r1_trimmed = expand("01.qc/short_read_trim/{sample}.R1.trimed.fq.gz",
@@ -63,14 +69,14 @@ rule multiqc_trim:
     message:
         "Running MultiQC to aggregate fastp reports",
     benchmark:
-        "benchmarks/multiqc_fastp_benchmark.txt",
+        "benchmarks/01.qc/multiqc_trim.txt",
     params:
         fastqc_reports = "01.qc/short_read_trim/",
         report_dir = "01.qc/multiqc_short_read_trim/",
         report = "multiqc_short_read_trim_report.html",
         title = "short_read_trim-multiqc-report",
     log:
-        "logs/01.short_read_trim/multiqc_trim.log",
+        "logs/01.qc/multiqc_trim.log",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:
@@ -81,4 +87,4 @@ rule multiqc_trim:
                 -i {params.title} \
                 -n {params.report} &> {log}
         """
-# ----- rule ----- #
+# ----- end of rules ----- #

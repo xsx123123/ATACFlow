@@ -6,6 +6,7 @@ fastq_screen_db_path: /data/jzhang/reference/fastq_screen_database
 # Support gene version
 can_use_genome_version:
   - Lsat_Salinas_v11
+  - hg38
   - GO
 # Bowtie2 Reference PATH
 Bowtie2_index:
@@ -18,5 +19,21 @@ Bowtie2_index:
       bed: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.final.bed12
       go_annotation: Lactuca_sativa_V11_ncbi/GCF_002870075.4-RS_2022_12_gene_ontology.go
       ploidy: 2
+    hg38:
+      index: hg38/GRCh38.p14_bowtie2/GRCh38.p14_index
+      gene_gtf: hg38/gencode.v49.annotation.gene.gtf
+      genome_fa: hg38/GRCh38.p14.genome.fa
+      genome_gtf: hg38/gencode.v49.annotation.gtf
+      genome_gff: hg38/gencode.v49.annotation.gff3
+      bed: hg38/gencode.v49.annotation.bed12
+      go_annotation: hg38/goa_human.go
+      blacklists: hg38/hg38-blacklist.v2.bed
+      ploidy: 2
     GO:
       obo: go_database/go-basic.obo
+genome_info:
+  Lsat_Salinas_v11:
+    effectiveGenomeSize: 2590369317
+  hg38:
+    effectiveGenomeSize: 3291585349
+    chrMID: 'chrM'

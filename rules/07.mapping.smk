@@ -10,16 +10,21 @@ def get_blacklist_path(wildcards):
     """
     Get the blacklist path based on genome build
     """
-    build = config.get("genome_build")
-    blacklist_dict = config.get("blacklists", {})
-    return blacklist_dict.get(build, "")
+    build = config.get("Genome_Version")
+    blacklist_dict = config.get('Bowtie2_index',{}).get('Genome_Version',{}).get("blacklists", {})
+
+    if not blacklist_dict:
+        return ""
+    else:
+        blacklist_dir = os.path.join(config.get("reference_path"),blacklist_dict)
+    return blacklist_dir
 
 def get_organelle_filter_expr(wildcards):
     """
     Generate filter expression for organelle chromosomes
     """
-    build = config.get("genome_build")
-    org_names = config.get("organelle_names", {}).get(build, [])
+    build = config.get("Genome_Version")
+    org_names = config.get("genome_info", {}).get(build, []).get("chrMID", [])
 
     if not org_names:
         return ""
@@ -41,7 +46,7 @@ rule Bowtie2_mapping:
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
-        workflow.source_path("../envs/Bowtie.yml"),
+        workflow.source_path("../envs/bowtie2.yaml"),
     log:
         "logs/02.mapping/Bowtie2_{sample}.log",
     message:
@@ -88,7 +93,7 @@ rule sam_to_sorted_bam:
         config['parameter']['threads']['samtools'],
     shell:
         """
-        ( samtools sort -@ {threads} -o {output.sort_bam} {output.bam} &&
+        ( samtools sort -@ {threads} -o {output.sort_bam} {input.bam} &&
         samtools index -@ {threads} {output.sort_bam} ) &>{log}
         """
 
@@ -98,6 +103,7 @@ rule estimate_library_complexity:
     """
     input:
         sort_bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
+        sort_bai = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',
     output:
         preseq = '02.mapping/preseq/{sample}.lc_extrap.txt',
         c_curve = '02.mapping/preseq/{sample}.c_curve.txt',
@@ -125,6 +131,7 @@ rule add_read_groups:
     """
     input:
         bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
+        sort_bai = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',
     output:
         bam = temp('02.mapping/gatk/{sample}/{sample}.rg.bam'),
         bai = temp('02.mapping/gatk/{sample}/{sample}.rg.bam.bai')
@@ -336,7 +343,7 @@ rule generate_bigwig_coverage:
         shifted_sort_bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',
         shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai'
     output:
-        bw = f"02.mapping/bigwig/{sample}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw"
+        bw = f"02.mapping/bamCoverage/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw"
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
@@ -353,7 +360,7 @@ rule generate_bigwig_coverage:
         binSize = config['parameter']['bamCoverage']['binSize'],
         smoothLength = config['parameter']['bamCoverage']['smoothLength'],
         normalizeUsing = config['parameter']['bamCoverage']['normalizeUsing'],
-        effectiveGenomeSize = config['Bowtie2_index'][config['Genome_Version']]['effectiveGenomeSize'],
+        effectiveGenomeSize = config['genome_info'][config['Genome_Version']]['effectiveGenomeSize'],
     shell:
         """
         bamCoverage --bam {input.shifted_sort_bam} -o {output.bw} \
@@ -369,14 +376,14 @@ rule tss_enrichment_analysis:
     Compute TSS enrichment profile and generate plot
     """
     input:
-        bw = f"02.mapping/bigwig/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw"
+        bw = f"02.mapping/bamCoverage/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw"
     output:
         matrix = "02.mapping/computeMatrix/{sample}_TSS_matrix.gz",
         plot = "02.mapping/plots/{sample}_TSS_enrichment.png"
     params:
         gene_bed = config['Bowtie2_index'][config['Genome_Version']]['bed'],
-        referencePoint = config.get('parameter', {}).get('draw_tss_plot', {}).get('referencePoint', 'TSS'),
-        range_up_down = config.get('parameter', {}).get('draw_tss_plot', {}).get('range', 3000)
+        referencePoint = config['parameter']['draw_tss_plot']['referencePoint'],
+        range_up_down = config['parameter']['draw_tss_plot']['range'],
     log:
         "logs/02.mapping/tss_enrichment_{sample}.log"
     conda:

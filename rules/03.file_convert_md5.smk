@@ -1,8 +1,11 @@
 #!/usr/bin/snakemake
 # -*- coding: utf-8 -*-
 import os
-# ------- rule ------- #
+
 rule seq_preprocessor:
+    """
+    Process raw data and create symbolic links with MD5 validation
+    """
     input:
         md5 = get_all_input_dirs(samples.keys(),config = config),
     output:
@@ -19,7 +22,7 @@ rule seq_preprocessor:
     message:
         "Running seq_preprocessor on raw data data",
     benchmark:
-        "benchmarks/seq_preprocessor.txt",
+        "benchmarks/01.qc/seq_preprocessor.txt",
     resources:
         **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
     params:
@@ -27,7 +30,7 @@ rule seq_preprocessor:
         md5 = config['raw_data']['md5'],
         seq_preprocessor =  workflow.source_path(config['software']['seq_preprocessor']),
     log:
-        "logs/01.qc/seq_preprocessor.txt",
+        "logs/01.qc/seq_preprocessor.log",
     threads: 1
     shell:
         """
@@ -39,6 +42,9 @@ rule seq_preprocessor:
         """
 
 rule check_md5:
+    """
+    Verify MD5 checksums of processed raw data files
+    """
     input:
         md5_check_json = os.path.join('00.raw_data',config['convert_md5'],"raw_data_md5.json"),
         link_r1 = expand(os.path.join('00.raw_data',
@@ -56,14 +62,14 @@ rule check_md5:
     message:
         "Running md5 check on raw data files on {input.md5_check_json}",
     benchmark:
-        "benchmarks/md5_check_benchmark.txt",
+        "benchmarks/01.qc/md5_check.txt",
     log:
         "logs/01.qc/md5_check.log",
     params:
         md5_check = os.path.join('00.raw_data',config['convert_md5']),
         log_file = "logs/01.qc/md5_check.log",
         json_md5_verifier =  workflow.source_path(config['software']['json_md5_verifier']),
-    threads: 
+    threads:
         config['parameter']['threads']['json_md5_verifier'],
     shell:
         """
@@ -74,4 +80,4 @@ rule check_md5:
                 -o {output.md5_check} \
                 --log-file {params.log_file} &> {log}
         """
-# ------- rule ------- #
+# ----- end of rules ----- #
