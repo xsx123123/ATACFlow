@@ -94,7 +94,8 @@ rule create_consensus_peakset:
         "Creating consensus peakset from all samples",
     benchmark:
         "benchmarks/04.consensus/merge_peaks.txt",
-    threads: config['parameter']['threads']['bedtools']
+    threads: 
+        config['parameter']['threads']['bedtools']
     shell:
         """
         cat {input.peaks} | \
@@ -103,38 +104,31 @@ rule create_consensus_peakset:
         """
 
 rule generate_count_matrix:
-    """
-    Create a tabular file (Count Matrix) using BEDTools multicov.
-    Rows = Consensus Peaks, Columns = Samples.
-    This file is ready for filtering and DE analysis (DESeq2/edgeR).
-    """
     input:
         consensus = "04.consensus/consensus_peaks.bed",
-        bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys()),
-        bais = expand("02.mapping/shifted/{sample}.shifted.sorted.bam.bai", sample=samples.keys())
+        bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
     output:
-        counts = "04.consensus/raw_counts.txt",
-        counts_with_header = "04.consensus/consensus_counts_matrix.txt"
-    resources:
-        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
+        counts_matrix = "04.consensus/consensus_counts_matrix.txt",
+        description = "04.consensus/matrix_description.txt"
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
     log:
-        "logs/04.consensus/multicov.log",
-    message:
-        "Generating count matrix from consensus peaks and BAM files",
-    benchmark:
-        "benchmarks/04.consensus/multicov.txt",
-    threads: config['parameter']['threads']['bedtools']
+        "logs/04.consensus/multicov.log"
     params:
-        sample_names = " ".join(samples.keys())
+        sample_names = list(samples.keys()),
+        path = workflow.source_path(config['parameter']['generate_atac_matrix']['path'])
+    threads: 
+        config['parameter']['threads']['bedtools']
     shell:
         """
-        echo "Running multicov..." > {log}
-        bedtools multicov -bams {input.bams} -bed {input.consensus} > {output.counts}.tmp 2>> {log}
-        HEADER="chrom\tstart\tend\t"{params.sample_names}
-        echo -e "${{HEADER}}" | tr ' ' '\t' | cat - {output.counts}.tmp > {output.counts}
-        echo -e "${{HEADER}}" | tr ' ' '\t' | cat - {output.counts}.tmp > {output.counts_with_header}
-        rm {output.counts}.tmp
+        chmod +x {params.path}
+        python3 {params.path} \
+            --bed {input.consensus} \
+            --inputs {input.bams} \
+            --samples {params.sample_names} \
+            --output {output.counts_matrix} \
+            --desc {output.description} \
+            --log {log}
         """
+
 # ----- end of rules ----- #

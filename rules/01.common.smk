@@ -54,8 +54,8 @@ def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> li
     data_deliver.append(expand("03.peak_calling/HOMER/{sample}_annotation.txt",sample=samples.keys()))
     data_deliver.append(expand("03.peak_calling/HOMER/{sample}_stats.txt",sample=samples.keys()))
     # count_matrix
-    data_deliver.append("04.consensus/raw_counts.txt")
     data_deliver.append("04.consensus/consensus_counts_matrix.txt")
+    data_deliver.append("04.consensus/matrix_description.txt")
     # ataqv
     data_deliver.append("05.qc/ataqv_report")
     # ------------- merge group ---------------- #
@@ -68,7 +68,7 @@ def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> li
         data_deliver.extend(expand("03.peak_calling/MERGE_MACS2/{group}/{group}_treat_pileup.bdg",group = groups.keys()))
         data_deliver.extend(expand("03.peak_calling/MERGE_HOMER/{group}_annotation.txt",group = groups.keys()))
         data_deliver.extend(expand("03.peak_calling/MERGE_HOMER/{group}_stats.txt",group = groups.keys()))
-        data_deliver.append("04.consensus/merge_raw_counts.txt")
+        data_deliver.append("04.consensus/merge_matrix_description.txt")
         data_deliver.append("04.consensus/merge_consensus_counts_matrix.txt")
         
     if config['print_target']:

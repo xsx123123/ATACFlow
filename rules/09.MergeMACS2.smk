@@ -7,7 +7,7 @@ rule merge_shifted_bams:
     """
     input:
         lambda wildcards: expand(
-            "02.mapping/shifted/{sample}.shifted.sorted.bam", 
+            "02.mapping/shifted/{sample}.shifted.sorted.bam",
             sample=groups[wildcards.group]
         )
     output:
@@ -15,7 +15,7 @@ rule merge_shifted_bams:
         bai = "02.mapping/merged/{group}.merged.bam.bai"
     log:
         "logs/02.mapping/merge_{group}.log"
-    threads: 
+    threads:
         8
     conda:
         workflow.source_path("../envs/samtools.yaml")
@@ -49,7 +49,7 @@ rule macs2_merge_callpeak:
         "Running MACS2 peak calling for {wildcards.group}",
     benchmark:
         "benchmarks/03.peak_calling/MERGE_macs2_{group}.txt",
-    threads: 
+    threads:
         1
     params:
         gsize = config['genome_info'][config['Genome_Version']]['effectiveGenomeSize'],
@@ -125,37 +125,32 @@ rule merge_create_consensus_peakset:
         bedtools merge -i stdin > {output.consensus} 2> {log}
         """
 
-rule merge_generate_count_matrix:
-    """
-    Count INDIVIDUAL sample reads against the GROUP consensus peaks.
-    Rows = Group Consensus Peaks
-    Columns = Individual Samples (Replicates)
-    """
+rule generate_count_matrix:
     input:
         consensus = "04.consensus/group_consensus_peaks.bed",
-        bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys()),
-        bais = expand("02.mapping/shifted/{sample}.shifted.sorted.bam.bai", sample=samples.keys())
+        bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
     output:
-        counts = "04.consensus/merge_raw_counts.txt",
-        counts_with_header = "04.consensus/merge_consensus_counts_matrix.txt"
-    resources:
-        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
+        counts_matrix = "04.consensus/merge_consensus_counts_matrix.txt",
+        description = "04.consensus/merge_matrix_description.txt"
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
     log:
-        "logs/04.consensus/multicov.log",
-    threads: config['parameter']['threads']['bedtools']
+        "logs/04.consensus/multicov.log"
     params:
-        sample_names = " ".join(samples.keys())
+        sample_names = list(samples.keys()),
+        path = workflow.source_path(config['parameter']['generate_atac_matrix']['path'])
+    threads: 
+        config['parameter']['threads']['bedtools']
     shell:
         """
-        echo "Running multicov on individual bams against group consensus..." > {log}
-        # bedtools multicov 按照输入的 bam 顺序输出列
-        bedtools multicov -bams {input.bams} -bed {input.consensus} > {output.counts}.tmp 2>> {log}
-
-        HEADER="chrom\tstart\tend\t"{params.sample_names}
-        echo -e "${{HEADER}}" | tr ' ' '\t' | cat - {output.counts}.tmp > {output.counts}
-        echo -e "${{HEADER}}" | tr ' ' '\t' | cat - {output.counts}.tmp > {output.counts_with_header}
-        rm {output.counts}.tmp
+        chmod +x {params.path}
+        python3 {params.path} \
+            --bed {input.consensus} \
+            --inputs {input.bams} \
+            --samples {params.sample_names} \
+            --output {output.counts_matrix} \
+            --desc {output.description} \
+            --log {log}
         """
+
 # ----- end of rules ----- #

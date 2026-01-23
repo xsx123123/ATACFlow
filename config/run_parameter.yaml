@@ -41,6 +41,8 @@ parameter:
         cluster_size: 3        # 集群数量阈值
         fs_threshold: 30.0     # Fisher Strand 阈值 (RNA建议30, DNA建议60)
         qd_threshold: 2.0      # Quality by Depth 阈值
+  generate_atac_matrix:
+    path: src/src/ATACTools/tools/generate_atac_matrix/generate_atac_matrix.py
   DEG:
     PATH: ../src/src/DEG/run_deseq2.r
     LFC: 1
