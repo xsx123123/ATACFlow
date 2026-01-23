@@ -54,27 +54,9 @@ include: 'rules/06.short_read_clean.smk'
 include: 'rules/07.mapping.smk'
 include: 'rules/08.MACS2.smk'
 include: 'rules/09.MergeMACS2.smk'
-
-# 传递对比组信息给motif规则
-exec("""
-try:
-    wildcard_constraints(
-        contrast="|".join(ALL_CONTRASTS) if ALL_CONTRASTS else ".*",
-        treatment="|".join(CONTRAST_MAP) if CONTRAST_MAP else ".*"
-    )
-except:
-    pass
-""")
-
-include: 'rules/11.motifs.smk'
-include: 'rules/14.Merge_qc.smk'
+include: 'rules/10.ataqv.smk'
 # --------- 5. Target Rule --------- #
 rule all:
     input:
         DataDeliver(config = config,merge_group = merge_group,groups = groups)
 
-# 新增：专门用于运行差异motif分析的目标规则
-rule differential_motif_analysis:
-    input:
-        expand("06.motif_analysis/06.final_report/differential_motif_analysis_report.txt",
-               zip, contrast=ALL_CONTRASTS, treatment=CONTRAST_MAP) if ALL_CONTRASTS and CONTRAST_MAP else []

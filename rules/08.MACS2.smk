@@ -25,7 +25,7 @@ rule macs2_callpeak:
         "Running MACS2 peak calling for {wildcards.sample}",
     benchmark:
         "benchmarks/03.peak_calling/macs2_{sample}.txt",
-    threads: 
+    threads:
         1
     params:
         gsize = config['genome_info'][config['Genome_Version']]['effectiveGenomeSize'],
@@ -65,7 +65,7 @@ rule homer_annotate_peaks:
         "benchmarks/03.peak_calling/homer_{sample}.txt",
     threads: config['parameter']['threads']['homer']
     params:
-        gtf = config['Bowtie2_index'][config['Genome_Version']]['gene_gtf'],
+        gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
         genome_fasta = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
     shell:
         """
@@ -127,19 +127,14 @@ rule generate_count_matrix:
         "benchmarks/04.consensus/multicov.txt",
     threads: config['parameter']['threads']['bedtools']
     params:
-        sample_names = samples.keys()
+        sample_names = " ".join(samples.keys())
     shell:
         """
-        # 1. 使用 bedtools multicov 计算
-        # -bams 后面跟所有的 bam 文件
-        # -bed 输入 consensus bed
         echo "Running multicov..." > {log}
-        bedtools multicov -bams {input.bams} -bed {input.consensus} > {output.counts} 2>> {log}
-
-        # 2. 添加表头 (Header) 让文件更易读
-        # multicov 的输出前三列是 chrom, start, end，后面跟着每个 BAM 的计数
-
-        HEADER="chrom\tstart\tend\t"$(echo "{params.sample_names}" | sed 's/ /\t/g')
-        echo -e "$HEADER" | cat - {output.counts} > {output.counts_with_header}
+        bedtools multicov -bams {input.bams} -bed {input.consensus} > {output.counts}.tmp 2>> {log}
+        HEADER="chrom\tstart\tend\t"{params.sample_names}
+        echo -e "${{HEADER}}" | tr ' ' '\t' | cat - {output.counts}.tmp > {output.counts}
+        echo -e "${{HEADER}}" | tr ' ' '\t' | cat - {output.counts}.tmp > {output.counts_with_header}
+        rm {output.counts}.tmp
         """
 # ----- end of rules ----- #

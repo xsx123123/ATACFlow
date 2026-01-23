@@ -89,7 +89,7 @@ rule merge_homer_annotate_peaks:
         "benchmarks/03.peak_calling/MERGE_homer_{group}.txt",
     threads: config['parameter']['threads']['homer']
     params:
-        gtf = config['Bowtie2_index'][config['Genome_Version']]['gene_gtf'],
+        gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
         genome_fasta = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
     shell:
         """
@@ -136,8 +136,8 @@ rule merge_generate_count_matrix:
         bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys()),
         bais = expand("02.mapping/shifted/{sample}.shifted.sorted.bam.bai", sample=samples.keys())
     output:
-        counts = "04.consensus/raw_counts.txt",
-        counts_with_header = "04.consensus/consensus_counts_matrix.txt"
+        counts = "04.consensus/merge_raw_counts.txt",
+        counts_with_header = "04.consensus/merge_consensus_counts_matrix.txt"
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
@@ -146,14 +146,16 @@ rule merge_generate_count_matrix:
         "logs/04.consensus/multicov.log",
     threads: config['parameter']['threads']['bedtools']
     params:
-        sample_names = samples.keys()
+        sample_names = " ".join(samples.keys())
     shell:
         """
         echo "Running multicov on individual bams against group consensus..." > {log}
         # bedtools multicov 按照输入的 bam 顺序输出列
-        bedtools multicov -bams {input.bams} -bed {input.consensus} > {output.counts} 2>> {log}
+        bedtools multicov -bams {input.bams} -bed {input.consensus} > {output.counts}.tmp 2>> {log}
 
-        HEADER="chrom\tstart\tend\t"$(echo "{params.sample_names}" | sed 's/ /\t/g')
-        echo -e "$HEADER" | cat - {output.counts} > {output.counts_with_header}
+        HEADER="chrom\tstart\tend\t"{params.sample_names}
+        echo -e "${{HEADER}}" | tr ' ' '\t' | cat - {output.counts}.tmp > {output.counts}
+        echo -e "${{HEADER}}" | tr ' ' '\t' | cat - {output.counts}.tmp > {output.counts_with_header}
+        rm {output.counts}.tmp
         """
 # ----- end of rules ----- #

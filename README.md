@@ -166,8 +166,5 @@ ATACFlow遵循以下设计理念：
 
 ```bash
 # 运行完整分析流程
-snakemake -s snakefile
-
-# 运行特定分析步骤
-snakemake -s snakefile differential_motif_analysis
+snakemake --cores=60 -p --conda-frontend mamba --use-conda --rerun-triggers mtime  --logger rich-loguru --config analysisyaml=/data/jzhang/project/Temp/atac_human_PRJNA427322/01.workflow/config.yaml
 ```

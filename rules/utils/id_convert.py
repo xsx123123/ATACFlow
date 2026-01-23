@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 from rich import print as rprint
 from typing import List, Dict, Tuple
+from collections import defaultdict
 
 def _validate_df(df: pd.DataFrame, required_cols: List[str], index_col: str) -> None:
     """[内部函数] 校验 DataFrame 的完整性和唯一性 (保持不变)"""
@@ -89,6 +90,64 @@ def load_samples(csv_path, required_cols=None, index_col="sample") -> Tuple[bool
         rprint(f"[bold red]❌ Error: load_samples 解析失败: {e}[/bold red]")
         sys.exit(1)
 
+def load_contrasts(csv_path, samples_dict):
+    """
+    解析对比表，并根据 samples_dict 匹配对应的 BAM 文件路径。
+    """
+    file_path = Path(csv_path)
+    if not file_path.exists():
+        print(f"❌ Error: 找不到对比表文件: {file_path}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        # 1. 读取并清洗
+        df = pd.read_csv(file_path, dtype=str, comment='#')
+        df.columns = df.columns.str.strip()
+        df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
+
+        if "Control" not in df.columns or "Treat" not in df.columns:
+            print(f"❌ Error: contrasts.csv 必须包含 'Control' 和 'Treat' 列", file=sys.stderr)
+            sys.exit(1)
+
+        all_contrasts = []
+        contrast_map = {}
+
+        # 2. 遍历每一行对比
+        for _, row in df.iterrows():
+            ctrl_grp = row['Control']
+            treat_grp = row['Treat']
+            c_name = f"{ctrl_grp}_vs_{treat_grp}"
+            
+            # 3. 从 samples_dict 中筛选 BAM
+            # 因为 load_samples 已经保证了每行都有 'bam' 键，这里可以直接取
+            bams_ctrl = [
+                info['bam'] for info in samples_dict.values() 
+                if info['group'] == ctrl_grp
+            ]
+            bams_treat = [
+                info['bam'] for info in samples_dict.values() 
+                if info['group'] == treat_grp
+            ]
+
+            # 4. 仅检查是否找到了样本（逻辑检查），不检查文件物理存在
+            if not bams_ctrl:
+                print(f"⚠️ Warning: 组别 '{ctrl_grp}' 没有任何样本，跳过 {c_name}", file=sys.stderr)
+                continue
+            if not bams_treat:
+                print(f"⚠️ Warning: 组别 '{treat_grp}' 没有任何样本，跳过 {c_name}", file=sys.stderr)
+                continue
+
+            all_contrasts.append(c_name)
+            contrast_map[c_name] = {
+                "b1": bams_ctrl,
+                "b2": bams_treat
+            }
+            
+        return all_contrasts, contrast_map
+
+    except Exception as e:
+        print(f"❌ Error: load_contrasts 解析失败: {e}", file=sys.stderr)
+        sys.exit(1)
 
 def parse_groups(samples_dict: Dict) -> Dict[str, List[str]]:
     """

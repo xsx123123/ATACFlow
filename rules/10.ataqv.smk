@@ -19,7 +19,7 @@ rule ataqv_qc:
         shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai',
         narrow_peak = "03.peak_calling/MACS2/{sample}/{sample}_peaks.narrowPeak",
     output:
-        json = "05.qc/ataqv/{sample}.ataqv.json.gz",
+        json = "05.qc/ataqv/{sample}.ataqv.json",
         log_out = "05.qc/ataqv/{sample}.ataqv.out"
     conda:
         workflow.source_path("../envs/ataqv.yaml"),
