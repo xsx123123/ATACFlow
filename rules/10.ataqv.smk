@@ -53,7 +53,7 @@ rule mkarv_report:
     Merge all JSONs into one HTML report.
     """
     input:
-        jsons = expand("05.qc/ataqv/{sample}.ataqv.json.gz", sample=samples.keys())
+        jsons = expand("05.qc/ataqv/{sample}.ataqv.json", sample=samples.keys())
     output:
         directory("05.qc/ataqv_report")
     conda:

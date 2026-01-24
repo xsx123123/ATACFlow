@@ -61,7 +61,7 @@ rule macs2_merge_callpeak:
             -t {input.bam} \
             -f BAMPE \
             -g {params.gsize} \
-            --name {wildcards.sample} \
+            --name {wildcards.group} \
             --outdir {params.outdir} \
             -q {params.qvalue} \
             --keep-dup all \
@@ -125,7 +125,38 @@ rule merge_create_consensus_peakset:
         bedtools merge -i stdin > {output.consensus} 2> {log}
         """
 
-rule generate_count_matrix:
+rule merge_homer_annotate_consensus_peaks:
+    """
+    Annotate peaks relative to gene features using HOMER.
+    """
+    input:
+        consensus = "04.consensus/group_consensus_peaks.bed"
+    output:
+        annotation = "04.consensus/group_consensus_peaks_annotation.txt",
+        stats = "04.consensus/group_consensus_peaks_stats.txt"
+    resources:
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
+    conda:
+        workflow.source_path("../envs/homer.yaml"),
+    log:
+        "logs/03.peak_calling/group consensus_peaks.log",
+    message:
+        "Running HOMER annotation for group consensus peaks",
+    benchmark:
+        "benchmarks/03.peak_calling/group_consensus_peaks_annotation.txt",
+    threads: config['parameter']['threads']['homer']
+    params:
+        gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
+        genome_fasta = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
+    shell:
+        """
+        annotatePeaks.pl {input.consensus} {params.genome_fasta} \
+            -gtf {params.gtf} \
+            -annStats {output.stats} \
+            -p {threads} > {output.annotation} 2> {log}
+        """
+
+rule merge_generate_count_matrix:
     input:
         consensus = "04.consensus/group_consensus_peaks.bed",
         bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
@@ -152,5 +183,28 @@ rule generate_count_matrix:
             --desc {output.description} \
             --log {log}
         """
-
+rule merge_generate_count_matrix_ann:
+    input:
+        annotation = "04.consensus/group_consensus_peaks_annotation.txt",
+        counts_matrix = "04.consensus/merge_consensus_counts_matrix.txt",
+    output:
+        counts_matrix_ann = "04.consensus/merge_consensus_counts_matrix_ann.txt",
+    conda:
+        workflow.source_path("../envs/bedtools.yaml"),
+    log:
+        "logs/04.consensus/consensus_counts_matrix_ann.log",
+    benchmark:
+        "benchmarks/04.consensus/consensus_counts_matrix_ann.txt",
+    params:
+        path = workflow.source_path(config['parameter']['merge_peaks']['path'])
+    threads: 
+        1
+    shell:
+        """
+        chmod +x {params.path}
+        python3 {params.path} \
+            -a {input.annotation} \
+            -c {input.counts_matrix} \
+            -o {output.counts_matrix_ann} &> {log}
+        """
 # ----- end of rules ----- #

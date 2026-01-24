@@ -13,6 +13,8 @@ parameter:
     homer: 10
     rnaflow-cli: 8
     Report: 10
+    samtools_flagstat: 10
+    samtools_stats: 10
   validate_fastq_screen:
     path: ../src/src/fastq_screen/validate_fastq_screen.py
     path_conf: ../data/fastq_screen.conf_template
@@ -42,7 +44,9 @@ parameter:
         fs_threshold: 30.0     # Fisher Strand 阈值 (RNA建议30, DNA建议60)
         qd_threshold: 2.0      # Quality by Depth 阈值
   generate_atac_matrix:
-    path: src/src/ATACTools/tools/generate_atac_matrix/generate_atac_matrix.py
+    path: ../src/src/ATACTools/tools/generate_atac_matrix/generate_atac_matrix.py
+  merge_peaks:
+    path: ../src/src/ATACTools/tools/merge_peaks.py
   DEG:
     PATH: ../src/src/DEG/run_deseq2.r
     LFC: 1

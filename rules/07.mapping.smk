@@ -19,29 +19,19 @@ def get_blacklist_path(wildcards):
         blacklist_dir = os.path.join(config.get("reference_path"),blacklist_dict)
     return blacklist_dir
 
-def get_organelle_filter_expr(wildcards):
-    """
-    同时获取线粒体 (chrMID) 和叶绿体 (plast) 并生成 samtools 过滤表达式
-    """
+def get_organelle_names(wildcards):
     build = config.get("Genome_Version")
     genome_cfg = config.get("genome_info", {}).get(build, {})
-    
+
     org_list = []
     for key in ["chrMID", "plast"]:
         val = genome_cfg.get(key)
         if val:
-            if isinstance(val, list):
-                org_list.extend(val)
-            else:
-                org_list.append(val)
+            if isinstance(val, list): org_list.extend(val)
+            else: org_list.append(val)
 
-    if not org_list:
-        return ""
-
-    expr_list = [f'rname != "{name}"' for name in org_list]
-    full_expr = " && ".join(expr_list)
-
-    return f'-e \'{full_expr}\''
+    # Return as space-separated string for easier shell processing
+    return " ".join(org_list) if org_list else ""
 
 rule Bowtie2_mapping:
     """
@@ -136,6 +126,61 @@ rule estimate_library_complexity:
         preseq c_curve -pe -v -output {output.c_curve} -B  {input.sort_bam}
         """
 
+rule samtools_flagst:
+    input:
+        bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
+        bai = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',
+    output:
+        samtools_flagstat = '02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv',
+    resources:
+        **rule_resource(config, 'medium_resource',  skip_queue_on_local=True,logger = logger),
+    conda:
+        workflow.source_path("../envs/bwa2.yaml"),
+    message:
+        "Running flagst for MarkDuplicates of BAM : {input.bam}",
+    log:
+        "logs/02.mapping/bam_dup_lagstat_{sample}.log",
+    benchmark:
+        "benchmarks/{sample}_Dup_bam_lagstat_benchmark.txt",
+    threads:
+        config['parameter']["threads"]["samtools_flagstat"],
+    shell:
+        """
+        samtools flagstat \
+                 -@ {threads} \
+                 -O tsv \
+                 {input.bam} > {output.samtools_flagstat} 2>{log}
+        """
+
+rule samtools_stats:
+    input:
+        bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
+        bai = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',
+    output:
+        samtools_stats = '02.mapping/samtools_stats/{sample}_bam_stats.tsv',
+    resources:
+        **rule_resource(config, 'medium_resource',  skip_queue_on_local=True,logger = logger),
+    conda:
+        workflow.source_path("../envs/bwa2.yaml"),
+    message:
+        "Running stats for MarkDuplicates of BAM : {input.bam}",
+    log:
+        "logs/02.mapping/bam_dup_stats_{sample}.log",
+    benchmark:
+        "benchmarks/{sample}_Dup_bam_stats_benchmark.txt",
+    threads:
+        config['parameter']['threads']['samtools_stats'],
+    params:
+        reference = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
+    shell:
+        """
+        samtools stats \
+                 -@ {threads} \
+                 --reference {params.reference} \
+                 {input.bam} > {output.samtools_stats}  2>{log}
+        """
+
+
 rule add_read_groups:
     """
     Add read groups to BAM file using GATK
@@ -200,27 +245,24 @@ rule mark_duplicates:
         """
 
 rule filter_blacklist_and_mito:
-    """
-    Filter out blacklist regions and mitochondrial/organelle reads
-    """
     input:
-        bam = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam',  # Fixed path
+        bam = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam',
     output:
         bam = '02.mapping/filtered/{sample}.clean.bam',
         bai = '02.mapping/filtered/{sample}.clean.bam.bai'
     log:
         "logs/02.mapping/filter_blacklist_mito_{sample}.log"
+    threads: 4
     conda:
         workflow.source_path("../envs/samtools.yaml")
-    threads: 4
     params:
         mapq = 30,
-        flag_filter = 1804,  # Remove unmapped, secondary, QC failed, duplicates
+        flag_filter = 1804,
         blacklist = lambda wildcards: get_blacklist_path(wildcards),
-        mito_filter_arg = lambda wildcards: get_organelle_filter_expr(wildcards)
+        organelle_filter = lambda wildcards: " && ".join([f'rname != \\"{n}\\"' for n in get_organelle_names(wildcards).split()]) if get_organelle_names(wildcards) else "1"
     shell:
         """
-        # 1. 处理 Blacklist 逻辑
+        # 设置 blacklist 过滤命令
         if [ -n "{params.blacklist}" ]; then
             FILTER_CMD="bedtools intersect -v -a stdin -b {params.blacklist}"
             echo "Using blacklist: {params.blacklist}" > {log}
@@ -229,16 +271,11 @@ rule filter_blacklist_and_mito:
             echo "No blacklist used." > {log}
         fi
 
-        # 2. 打印细胞器过滤信息到日志
-        if [ -n "{params.mito_filter_arg}" ]; then
-            echo "Filtering organelles with: {params.mito_filter_arg}" >> {log}
-        else
-            echo "No organelle filtering applied (names not found in config)." >> {log}
-        fi
+        # 直接在命令中使用 params.organelle_filter
+        echo "Filter expression: {params.organelle_filter}" >> {log}
 
-        # 3. 执行管道 - first apply filters, then remove blacklist regions
-        (samtools view -h -b -F {params.flag_filter} -q {params.mapq} {params.mito_filter_arg} {input.bam} | \\
-         $FILTER_CMD > {output.bam}) 2>> {log}
+        (samtools view -h -b -F {params.flag_filter} -q {params.mapq} -e "{params.organelle_filter}" {input.bam} | \
+         eval "$FILTER_CMD" > {output.bam}) 2>> {log}
 
         samtools index {output.bam} >> {log} 2>&1
         """
@@ -275,7 +312,7 @@ rule filter_blacklist_and_mito:
 #        echo "------------------------------------------------" >> {log}
 #        echo "Reads before refine:" >> {log}
 #        samtools view -c {input.bam} >> {log}
-#        
+#
 #        echo "Reads after refine:" >> {log}
 #        samtools view -c {output.bam} >> {log}
 #
@@ -326,14 +363,12 @@ rule atac_seq_shift:
     log:
         "logs/02.mapping/atac_seq_shift_{sample}.log"
     conda:
-        workflow.source_path("../envs/deeptools.yaml")  # alignmentSieve is often in deeptools env
+        workflow.source_path("../envs/deeptools.yaml")
     threads:
         20
     shell:
         """
-        # Apply ATAC-seq shift correction
         alignmentSieve -b {input.bam} -o {output.shifted_bam} --ATACshift -p {threads} 2>> {log} && \
-        # Sort and index the shifted BAM
         samtools sort -@ {threads} {output.shifted_bam} -o {output.shifted_sort_bam} && \
         samtools index {output.shifted_sort_bam}
         """
@@ -402,7 +437,7 @@ rule tss_enrichment_analysis:
                       --skipZeros \
                       -o {output.matrix} \
                       -p {threads} &> {log}
-        
+
         # Generate TSS enrichment plot
         plotProfile -m {output.matrix} \
                     -out {output.plot} \

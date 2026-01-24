@@ -41,7 +41,7 @@ logger = get_analysis_logger()
 validate_genome_version(config=config, logger=logger)
 # --------- 3. Workspaces & Samples --------- #
 workdir: config["workflow"]
-merge_group,samples = load_samples(config["sample_csv"], required_cols=["sample", "sample_name", "group"])
+merge_group,samples = load_samples(config["sample_csv"], required_cols=["sample", "sample_name", "group"],logger = logger)
 groups = parse_groups(samples)
 ALL_CONTRASTS, CONTRAST_MAP = load_contrasts(config["paired_csv"], samples)
 # --------- 4. Rules Import --------- #
@@ -55,6 +55,7 @@ include: 'rules/07.mapping.smk'
 include: 'rules/08.MACS2.smk'
 include: 'rules/09.MergeMACS2.smk'
 include: 'rules/10.ataqv.smk'
+include: 'rules/14.Merge_qc.smk'
 # --------- 5. Target Rule --------- #
 rule all:
     input:

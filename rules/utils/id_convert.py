@@ -35,7 +35,7 @@ def _validate_df(df: pd.DataFrame, required_cols: List[str], index_col: str) -> 
         nan_rows = df[df[required_cols].isnull().any(axis=1)][index_col].tolist()
         rprint(f"[yellow]⚠️ 警告: 样本存在空值: {nan_rows}[/yellow]")
 
-def load_samples(csv_path, required_cols=None, index_col="sample") -> Tuple[bool, Dict]:
+def load_samples(csv_path, required_cols=None, index_col="sample",logger = None) -> Tuple[bool, Dict]:
     """
     读取 CSV，自动生成 BAM 路径。
     
@@ -69,14 +69,14 @@ def load_samples(csv_path, required_cols=None, index_col="sample") -> Tuple[bool
         
         # 详细的 Debug 信息
         if merge_group:
-            rprint(f"[bold green]✅ 合并条件满足:[/bold green] 所有组均包含生物学重复 (All groups have >1 samples).")
-            rprint(f"   Merge Mode -> [bold green]ON[/bold green]")
+            logger.info(f"[bold green]✅ 合并条件满足:[/bold green] 所有组均包含生物学重复 (All groups have >1 samples).")
+            logger.info(f"   Merge Mode -> [bold green]ON[/bold green]")
         else:
             # 找出哪些组是单样本，导致了 False
             single_sample_groups = group_counts[group_counts <= 1].index.tolist()
-            rprint(f"[bold yellow]⚠️ 合并条件未满足:[/bold yellow] 存在单样本组 (Singletons detected).")
-            rprint(f"   导致无法完全合并的组: [bold red]{single_sample_groups}[/bold red]")
-            rprint(f"   Merge Mode -> [bold red]OFF[/bold red]")
+            logger.warning(f"[bold yellow]⚠️ 合并条件未满足:[/bold yellow] 存在单样本组 (Singletons detected).")
+            logger.warning(f"   导致无法完全合并的组: [bold red]{single_sample_groups}[/bold red]")
+            logger.warning(f"   Merge Mode -> [bold red]OFF[/bold red]")
 
         # 自动构建 BAM 路径
         df['bam'] = df[index_col].apply(
@@ -87,7 +87,7 @@ def load_samples(csv_path, required_cols=None, index_col="sample") -> Tuple[bool
         return merge_group, samples_dict
 
     except Exception as e:
-        rprint(f"[bold red]❌ Error: load_samples 解析失败: {e}[/bold red]")
+        logger.warning(f"[bold red]❌ Error: load_samples 解析失败: {e}[/bold red]")
         sys.exit(1)
 
 def load_contrasts(csv_path, samples_dict):

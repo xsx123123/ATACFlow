@@ -45,6 +45,8 @@ def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> li
                                           sample=samples.keys()))
     data_deliver.extend(expand('02.mapping/computeMatrix/{sample}_TSS_matrix.gz',sample=samples.keys())),
     data_deliver.extend(expand('02.mapping/plots/{sample}_TSS_enrichment.png',sample=samples.keys())),
+    data_deliver.append(expand('02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv',sample=samples.keys()))
+    data_deliver.append(expand('02.mapping/samtools_stats/{sample}_bam_stats.tsv',sample=samples.keys()))
     # macs2
     data_deliver.extend(expand('03.peak_calling/MACS2/{sample}/{sample}_peaks.narrowPeak',sample=samples.keys()))
     data_deliver.extend(expand('03.peak_calling/MACS2/{sample}/{sample}_peaks.xls',sample=samples.keys()))
@@ -56,6 +58,7 @@ def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> li
     # count_matrix
     data_deliver.append("04.consensus/consensus_counts_matrix.txt")
     data_deliver.append("04.consensus/matrix_description.txt")
+    data_deliver.append("04.consensus/consensus_counts_matrix_ann.txt")
     # ataqv
     data_deliver.append("05.qc/ataqv_report")
     # ------------- merge group ---------------- #
@@ -70,7 +73,8 @@ def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> li
         data_deliver.extend(expand("03.peak_calling/MERGE_HOMER/{group}_stats.txt",group = groups.keys()))
         data_deliver.append("04.consensus/merge_matrix_description.txt")
         data_deliver.append("04.consensus/merge_consensus_counts_matrix.txt")
-        
+        data_deliver.append("04.consensus/merge_consensus_counts_matrix_ann.txt")
+
     if config['print_target']:
        rich_print(data_deliver)
     return  data_deliver

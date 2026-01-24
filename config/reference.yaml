@@ -11,13 +11,15 @@ can_use_genome_version:
 # Bowtie2 Reference PATH
 Bowtie2_index:
     Lsat_Salinas_v11:
-      index: Lactuca_sativa_V11_ncbi/Lactuca_sativa_V11_ncbi_bowtie2_index/V11_ncbi_bowtie2_index
-      gene_gtf: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.only_gene.gtf
-      genome_fa: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.fna
-      genome_gtf: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.gtf
-      genome_gff: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.gff
-      bed: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.final.bed12
+      index: Lactuca_sativa_V11_ncbi/Lsat_Salinas_v11_index/Lsat_Salinas_v11
+      gene_gtf: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.fix_id_gene.gtf
+      genome_fa: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.fix_id.fna
+      genome_gtf: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.fix_id.gtf
+      genome_gff: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.fix_id.gff
+      bed: Lactuca_sativa_V11_ncbi/Lsat_Salinas_v11.bed12
       go_annotation: Lactuca_sativa_V11_ncbi/GCF_002870075.4-RS_2022_12_gene_ontology.go
+      tss_bed:  Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic_fix_id_tss.bed
+      autosomes: Lactuca_sativa_V11_ncbi/Lactuca_sativa_V11_autosomes.txt
       ploidy: 2
     hg38:
       index: hg38/GRCh38.p14_bowtie2/GRCh38.p14_index
@@ -36,8 +38,8 @@ Bowtie2_index:
 genome_info:
   Lsat_Salinas_v11:
     effectiveGenomeSize: 2590369317
-    chrMID: NC_042756.1
-    plast: NC_007578.1
+    chrMID: ChrMT
+    plast: Chrpla
   hg38:
     effectiveGenomeSize: 3291585349
-    chrMID: 'chrM'
+    chrMID: chrM
