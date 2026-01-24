@@ -151,7 +151,7 @@ rule samtools_flagst:
                  -O tsv \
                  {input.bam} > {output.samtools_flagstat} 2>{log}
         """
-s
+
 rule samtools_stats:
     input:
         bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
