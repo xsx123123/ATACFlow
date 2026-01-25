@@ -48,7 +48,7 @@ parameter:
   merge_peaks:
     path: ../src/src/ATACTools/tools/merge_peaks.py
   DEG:
-    PATH: ../src/src/DEG/run_deseq2.r
+    PATH: ../src/src/DEG/atac_deseq2_pipeline.r
     LFC: 1
     PVAL: 0.05
   Enrichments:

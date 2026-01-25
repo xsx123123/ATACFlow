@@ -55,6 +55,7 @@ include: 'rules/07.mapping.smk'
 include: 'rules/08.MACS2.smk'
 include: 'rules/09.MergeMACS2.smk'
 include: 'rules/10.ataqv.smk'
+include: 'rules/12.DEG.smk'
 include: 'rules/14.Merge_qc.smk'
 # --------- 5. Target Rule --------- #
 rule all:

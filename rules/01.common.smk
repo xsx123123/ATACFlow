@@ -61,6 +61,8 @@ def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> li
     data_deliver.append("04.consensus/consensus_counts_matrix_ann.txt")
     # ataqv
     data_deliver.append("05.qc/ataqv_report")
+
+
     # ------------- merge group ---------------- #
     if merge_group:
         data_deliver.extend(expand("02.mapping/merged/{group}.merged.bam",group = groups.keys()))
@@ -74,7 +76,16 @@ def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> li
         data_deliver.append("04.consensus/merge_matrix_description.txt")
         data_deliver.append("04.consensus/merge_consensus_counts_matrix.txt")
         data_deliver.append("04.consensus/merge_consensus_counts_matrix_ann.txt")
-
+    # deg
+    if merge_group:
+        data_deliver.append('06.deg_enrich/DEG_merge/Global_PCA.pdf')
+        data_deliver.append('06.deg_enrich/DEG_merge/All_Contrast_Differential_Peaks_Statistics.csv')
+        data_deliver.append('06.deg_enric/merge_enrich/')
+    else:
+        data_deliver.append('06.deg_enrich/DEG/Global_PCA.pdf')
+        data_deliver.append('06.deg_enrich/DEG/All_Contrast_Differential_Peaks_Statistics.csv')
+        data_deliver.append('06.deg_enric/enrich/')
+    
     if config['print_target']:
        rich_print(data_deliver)
     return  data_deliver
