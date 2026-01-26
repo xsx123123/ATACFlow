@@ -4,6 +4,7 @@
 *.log
 *.RDS
 *.rds
+*.csv
 *.RData
 *.h5ad
 *.fa

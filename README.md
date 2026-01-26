@@ -91,10 +91,10 @@ graph LR
         direction TB
         BAM -.-> ATACv[ATACv QC]:::adv
         MergeMACS2 -.-> TOBIAS[TOBIAS Motifs]:::adv
-        Consensus -.-> DEG_Merge[DESeq2 (Merged)]:::adv
-        IndividualPeaks -.-> DEG_Single[DESeq2 (Single)]:::adv
-        DEG_Merge --> Enrich_Merge["GO/KEGG Enrichment (Merged)"]:::adv
-        DEG_Single --> Enrich_Single["GO/KEGG Enrichment (Single)"]:::adv
+        Consensus -.-> DEG_Merge["DESeq2 Merged"]:::adv
+        IndividualPeaks -.-> DEG_Single["DESeq2 Single"]:::adv
+        DEG_Merge --> Enrich_Merge["GO/KEGG Enrichment Merged"]:::adv
+        DEG_Single --> Enrich_Single["GO/KEGG Enrichment Single"]:::adv
     end
 
     %% 5. 交付 %%
