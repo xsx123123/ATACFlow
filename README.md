@@ -13,6 +13,105 @@ ATACFlow包含以下主要分析阶段：
 5. **转录因子结合位点分析**
 6. **质量控制与报告生成**
 
+```mermaid
+%% 初始化配置：使用 base 主题，强制让背景透明，线条用中性色 %%
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#E3F2FD',
+      'primaryTextColor': '#2c3e50',
+      'lineColor': '#7f8c8d',
+      'fontFamily': 'Helvetica'
+    }
+  }
+}%%
+
+graph LR
+
+    %% -------------------- 样式库 -------------------- %%
+    %% 核心技巧：颜色不要太深，也不要太亮，保持中间调 %%
+
+    %% 普通节点：圆角 + 中性边框 %%
+    classDef base fill:#fff,stroke:#7f8c8d,stroke-width:1px,rx:5,ry:5,color:#333;
+
+    %% 1. 数据流 (蓝色系) - 在黑夜模式下会显得很亮眼 %%
+    classDef raw fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,rx:5,ry:5,color:#0d47a1;
+
+    %% 2. 比对流 (绿色系) %%
+    classDef map fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,rx:5,ry:5,color:#1b5e20;
+
+    %% 3. 分析流 (橙色系) %%
+    classDef core fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,rx:5,ry:5,color:#e65100;
+
+    %% 4. 高级流 (紫色系) %%
+    classDef adv fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,rx:5,ry:5,color:#4a148c;
+
+    %% 5. 终点 (深灰底白字) - 注意：fill 用深灰而不是纯黑，stroke 用浅灰，这样在黑底也能看清边界 %%
+    classDef endNode fill:#37474f,stroke:#cfd8dc,stroke-width:2px,rx:15,ry:15,color:#fff;
+
+
+    %% -------------------- 流程图内容 -------------------- %%
+
+    %% 1. 数据清洗 %%
+    subgraph S1 ["Step 1: Data Cleaning"]
+        direction TB
+        Raw[Raw Data]:::raw --> MD5{MD5 Check}:::base
+        MD5 --> QC1[FastQC & Screen]:::base
+        QC1 --> Trim[Fastp Trimming]:::base
+        Trim --> Clean[Clean Data]:::raw
+    end
+
+    %% 2. 比对与过滤 %%
+    subgraph S2 ["Step 2: Mapping & Filtering"]
+        direction TB
+        Clean --> Bowtie2[Bowtie2 Mapping]:::map
+        Bowtie2 --> Filter[Structural Filtering]:::base
+        Filter --> Shift[Fragment Shifting]:::base
+        Shift --> BAM[Processed BAM]:::map
+    end
+
+    %% 3. Peak识别 %%
+    subgraph S3 ["Step 3: Peak Calling"]
+        direction TB
+        BAM --> MACS2[MACS2 Peak Calling]:::core
+        MACS2 --> Peaks[Individual Peaks]:::core
+        Peaks --> MergePeaks[Merge Group Peaks]:::core
+        MergePeaks --> Consensus[Consensus Peaks]:::core
+    end
+
+    %% 4. 高级分析 %%
+    subgraph S4 ["Step 4: Advanced Analysis"]
+        direction TB
+        BAM -.-> ATACv[ATACv QC]:::adv
+        MergePeaks -.-> TOBIAS[TOBIAS Motifs]:::adv
+        Consensus -.-> DEG[DESeq2 Analysis]:::adv
+        DEG --> Enrich["GO/KEGG Enrichment"]:::adv
+    end
+
+    %% 5. 交付 %%
+    Report(Final Report):::endNode
+
+    %% -------------------- 连线逻辑 -------------------- %%
+    ATACv --> Report
+    TOBIAS --> Report
+    Enrich --> Report
+
+    %% -------------------- 关键美化：透明化 Subgraph -------------------- %%
+    %% 这一步把那块黑色的背景去掉了！ %%
+    %% fill:none = 透明 %%
+    %% stroke:#7f8c8d = 中性灰边框 (黑白背景都可见) %%
+    %% stroke-dasharray = 虚线，看起来更轻盈 %%
+
+    style S1 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
+    style S2 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
+    style S3 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
+    style S4 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
+
+    %% 统一线条颜色为中性灰 %%
+    linkStyle default stroke:#7f8c8d,stroke-width:1px,fill:none;
+```
+
 ## 🔬 详细分析流程
 
 ### 1. 数据预处理与质控 (Quality Control & Preprocessing)
