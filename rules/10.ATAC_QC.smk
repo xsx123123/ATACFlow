@@ -47,6 +47,7 @@ rule ataqv_qc:
             {params.organism} \
             {input.shifted_sort_bam} > {output.log_out} 2> {log}
         """
+
 rule multiqc_ATAC_QC:
     """
     Run MultiQC to aggregate ATAC QC reports
@@ -76,6 +77,75 @@ rule multiqc_ATAC_QC:
         title = "ATAC_report",
     log:
         "logs/05.ATAC_QC/multiqc_ATAC_report.log",
+    threads:
+        config['parameter']['threads']['multiqc'],
+    shell:
+        """
+        multiqc {params.origin_reports} \
+                --force \
+                --outdir {params.report_dir} \
+                -i {params.title} \
+                -n {params.report} &> {log}
+        """
+
+rule multiqc_macs2_samples:
+    """
+    Run MultiQC to aggregate MACS2 Reports
+    """
+    input:
+        xls = expand("03.peak_calling/MACS2/{sample}/{sample}_peaks.xls",sample=samples.keys())
+    output:
+        report = '05.ATAC_QC/multiqc_MACS2_Samples_report.html',
+    resources:
+        **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
+    conda:
+        workflow.source_path("../envs/multiqc.yaml"),
+    message:
+        "Running MultiQC to aggregate MACS2",
+    benchmark:
+        "benchmarks/05.ATAC_QC/multiqc_MACS2_Samples_report.txt",
+    params:
+        origin_reports = "03.peak_calling/",
+        report_dir = "05.ATAC_QC/",
+        report = "multiqc_MACS2_Samples_report.html",
+        title = "MACS2_Samples_report",
+    log:
+        "logs/05.ATAC_QC/multiqc_MACS2_Samples_report.log",
+    threads:
+        config['parameter']['threads']['multiqc'],
+    shell:
+        """
+        multiqc {params.origin_reports} \
+                --force \
+                --outdir {params.report_dir} \
+                -i {params.title} \
+                -n {params.report} &> {log}
+        """
+
+rule multiqc_macs2_group:
+    """
+    Run MultiQC to aggregate MACS2 Reports
+    """
+    input:
+        xls =  expand("03.peak_calling/MACS2/{sample}/{sample}_peaks.xls",sample=samples.keys()),
+        group_xls = expand("03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.xls",group = groups.keys()),
+    output:
+        report = '05.ATAC_QC/multiqc_MACS2_Merge_report.html',
+    resources:
+        **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
+    conda:
+        workflow.source_path("../envs/multiqc.yaml"),
+    message:
+        "Running MultiQC to aggregate MACS2",
+    benchmark:
+        "benchmarks/05.ATAC_QC/multiqc_MACS2_Merge_report.txt",
+    params:
+        origin_reports = "03.peak_calling/",
+        report_dir = "05.ATAC_QC/",
+        report = "multiqc_MACS2_Merge_report.html",
+        title = "MACS2_Merge_report",
+    log:
+        "logs/05.ATAC_QC/multiqc_MACS2_Merge_report.log",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:

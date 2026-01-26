@@ -50,6 +50,9 @@ graph LR
     %% 5. 终点 (深灰底白字) - 注意：fill 用深灰而不是纯黑，stroke 用浅灰，这样在黑底也能看清边界 %%
     classDef endNode fill:#37474f,stroke:#cfd8dc,stroke-width:2px,rx:15,ry:15,color:#fff;
 
+    %% 决策节点 %%
+    classDef decision fill:#fffde7,stroke:#f57f17,stroke-width:2px,rx:5,ry:5,color:#ff6f00;
+
 
     %% -------------------- 流程图内容 -------------------- %%
 
@@ -71,22 +74,27 @@ graph LR
         Shift --> BAM[Processed BAM]:::map
     end
 
-    %% 3. Peak识别 %%
+    %% 3. Peak识别 - 双路径 %%
     subgraph S3 ["Step 3: Peak Calling"]
         direction TB
-        BAM --> MACS2[MACS2 Peak Calling]:::core
-        MACS2 --> Peaks[Individual Peaks]:::core
-        Peaks --> MergePeaks[Merge Group Peaks]:::core
-        MergePeaks --> Consensus[Consensus Peaks]:::core
+        BAM --> HasRep{Has Replicates?}:::decision
+        HasRep -->|No| SingleMACS2[Single Sample MACS2]:::core
+        HasRep -->|Yes| MergeBAM[Merge Group BAMs]:::core
+        MergeBAM --> MergeMACS2[Merged Sample MACS2]:::core
+        BAM --> IndividualMACS2[Individual Sample MACS2]:::core
+        MergeMACS2 --> Consensus[Consensus Peaks]:::core
+        IndividualMACS2 --> IndividualPeaks[Individual Peaks]:::core
     end
 
     %% 4. 高级分析 %%
     subgraph S4 ["Step 4: Advanced Analysis"]
         direction TB
         BAM -.-> ATACv[ATACv QC]:::adv
-        MergePeaks -.-> TOBIAS[TOBIAS Motifs]:::adv
-        Consensus -.-> DEG[DESeq2 Analysis]:::adv
-        DEG --> Enrich["GO/KEGG Enrichment"]:::adv
+        MergeMACS2 -.-> TOBIAS[TOBIAS Motifs]:::adv
+        Consensus -.-> DEG_Merge[DESeq2 (Merged)]:::adv
+        IndividualPeaks -.-> DEG_Single[DESeq2 (Single)]:::adv
+        DEG_Merge --> Enrich_Merge["GO/KEGG Enrichment (Merged)"]:::adv
+        DEG_Single --> Enrich_Single["GO/KEGG Enrichment (Single)"]:::adv
     end
 
     %% 5. 交付 %%
@@ -95,7 +103,8 @@ graph LR
     %% -------------------- 连线逻辑 -------------------- %%
     ATACv --> Report
     TOBIAS --> Report
-    Enrich --> Report
+    Enrich_Merge --> Report
+    Enrich_Single --> Report
 
     %% -------------------- 关键美化：透明化 Subgraph -------------------- %%
     %% 这一步把那块黑色的背景去掉了！ %%

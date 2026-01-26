@@ -7,8 +7,8 @@ rule merge_shifted_bams:
     """
     input:
         lambda wildcards: expand(
-            "02.mapping/shifted/{sample}.shifted.sorted.bam",
-            sample=groups[wildcards.group]
+            "02.mapping/shifted/{group}.shifted.sorted.bam",
+            group=groups[wildcards.group]
         )
     output:
         bam = "02.mapping/merged/{group}.merged.bam",
