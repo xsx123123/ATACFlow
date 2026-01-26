@@ -19,8 +19,8 @@ rule ataqv_qc:
         shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai',
         narrow_peak = "03.peak_calling/MACS2/{sample}/{sample}_peaks.narrowPeak",
     output:
-        json = "05.qc/ataqv/{sample}.ataqv.json",
-        log_out = "05.qc/ataqv/{sample}.ataqv.out"
+        json = "02.mapping/ataqv/{sample}.ataqv.json",
+        log_out = "02.mapping/ataqv/{sample}.ataqv.out"
     conda:
         workflow.source_path("../envs/ataqv.yaml"),
     resources:
@@ -47,21 +47,43 @@ rule ataqv_qc:
             {params.organism} \
             {input.shifted_sort_bam} > {output.log_out} 2> {log}
         """
-
-rule mkarv_report:
+rule multiqc_ATAC_QC:
     """
-    Merge all JSONs into one HTML report.
+    Run MultiQC to aggregate ATAC QC reports
     """
     input:
-        jsons = expand("05.qc/ataqv/{sample}.ataqv.json", sample=samples.keys())
+        json = expand("02.mapping/ataqv/{sample}.ataqv.json",sample=samples.keys()),
+        log_out = expand("02.mapping/ataqv/{sample}.ataqv.out",sample=samples.keys()),
+        preseq = expand('02.mapping/preseq/{sample}.lc_extrap.txt',sample=samples.keys()),
+        c_curve = expand('02.mapping/preseq/{sample}.c_curve.txt',sample=samples.keys()),
+        samtools_flagstat = expand('02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv',sample=samples.keys()),
+        samtools_stats = expand('02.mapping/samtools_stats/{sample}_bam_stats.tsv',sample=samples.keys()),
+        metrics = expand('02.mapping/gatk/{sample}/{sample}.rg.dedup.metrics.txt',sample=samples.keys()),
     output:
-        directory("05.qc/ataqv_report")
+        report = '05.ATAC_QC/multiqc_ATAC_report.html',
+    resources:
+        **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     conda:
-        workflow.source_path("../envs/ataqv.yaml")
+        workflow.source_path("../envs/multiqc.yaml"),
+    message:
+        "Running MultiQC to aggregate fastp reports",
+    benchmark:
+        "benchmarks/05.ATAC_QC/multiqc_ATAC_report.txt",
+    params:
+        origin_reports = "02.mapping/",
+        report_dir = "05.ATAC_QC/",
+        report = "multiqc_ATAC_report.html",
+        title = "ATAC_report",
     log:
-        "logs/05.qc/mkarv.log"
+        "logs/05.ATAC_QC/multiqc_ATAC_report.log",
+    threads:
+        config['parameter']['threads']['multiqc'],
     shell:
         """
-        mkarv 05.qc/ataqv_report {input.jsons} > {log} 2>&1
+        multiqc {params.fastqc_reports} \
+                --force \
+                --outdir {params.report_dir} \
+                -i {params.title} \
+                -n {params.report} &> {log}
         """
 # ----- end of rules ----- #

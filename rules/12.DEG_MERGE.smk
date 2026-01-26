@@ -1,6 +1,6 @@
 #!/usr/bin/snakemake
 # -*- coding: utf-8 -*-
-rule DEG:
+rule merge_DEG:
     input:
         counts = "04.consensus/merge_consensus_counts_matrix_ann.txt",
     output:
@@ -35,7 +35,7 @@ rule DEG:
                 --label_co=gene_id &> {log}
         """
 
-rule Enrichments:
+rule merge_Enrichments:
     input:
         DEG_info = "06.deg_enrich/DEG_merge/All_Contrast_Differential_Peaks_Statistics.csv",
     output:
@@ -47,8 +47,8 @@ rule Enrichments:
     log:
         "logs/06.deg_enrich/go_enrich.log",
     params:
-        obo = config['STAR_index']['GO']['obo'],
-        go_annotation = config['STAR_index'][config['Genome_Version']]['go_annotation'],
+        obo = config['Bowtie2_index']['GO']['obo'],
+        go_annotation = config['Bowtie2_index'][config['Genome_Version']]['go_annotation'],
         gene_col = config['parameter']['Enrichments']['gene_col'],
         r_script = workflow.source_path(config['parameter']['Enrichments']['PATH']),
         wrapper = workflow.source_path(config['parameter']['Enrichments']['PATH_py']),

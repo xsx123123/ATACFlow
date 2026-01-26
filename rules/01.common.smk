@@ -86,6 +86,9 @@ def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> li
         data_deliver.append('06.deg_enrich/DEG/All_Contrast_Differential_Peaks_Statistics.csv')
         data_deliver.append('06.deg_enric/enrich/')
     
+    # ATAC Report
+    data_deliver.append('05.ATAC_QC/multiqc_ATAC_report.html')
+
     if config['print_target']:
        rich_print(data_deliver)
     return  data_deliver

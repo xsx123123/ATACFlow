@@ -47,8 +47,8 @@ rule Enrichments:
     log:
         "logs/06.deg_enrich/go_enrich.log",
     params:
-        obo = config['STAR_index']['GO']['obo'],
-        go_annotation = config['STAR_index'][config['Genome_Version']]['go_annotation'],
+        obo = config['Bowtie2_index']['GO']['obo'],
+        go_annotation = config['Bowtie2_index'][config['Genome_Version']]['go_annotation'],
         gene_col = config['parameter']['Enrichments']['gene_col'],
         r_script = workflow.source_path(config['parameter']['Enrichments']['PATH']),
         wrapper = workflow.source_path(config['parameter']['Enrichments']['PATH_py']),
