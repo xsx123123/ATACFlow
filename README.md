@@ -81,9 +81,8 @@ graph LR
         HasRep -->|No| SingleMACS2[Single Sample MACS2]:::core
         HasRep -->|Yes| MergeBAM[Merge Group BAMs]:::core
         MergeBAM --> MergeMACS2[Merged Sample MACS2]:::core
-        BAM --> IndividualMACS2[Individual Sample MACS2]:::core
         MergeMACS2 --> Consensus[Consensus Peaks]:::core
-        IndividualMACS2 --> IndividualPeaks[Individual Peaks]:::core
+        SingleMACS2 --> IndividualPeaks[Individual Peaks]:::core
     end
 
     %% 4. 高级分析 %%
