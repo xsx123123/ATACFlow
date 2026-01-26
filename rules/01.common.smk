@@ -59,10 +59,6 @@ def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> li
     data_deliver.append("04.consensus/consensus_counts_matrix.txt")
     data_deliver.append("04.consensus/matrix_description.txt")
     data_deliver.append("04.consensus/consensus_counts_matrix_ann.txt")
-    # ataqv
-    data_deliver.append("05.qc/ataqv_report")
-
-
     # ------------- merge group ---------------- #
     if merge_group:
         data_deliver.extend(expand("02.mapping/merged/{group}.merged.bam",group = groups.keys()))

@@ -17,7 +17,6 @@ rule merge_qc_report:
     conda:
         workflow.source_path("../envs/multiqc.yaml"),
     params:
-        # 建议直接搜索包含所有 QC 结果的根目录
         search_dir = "01.qc",
         out_dir = "01.qc/multiqc_merge_qc",
         report_name = "multiqc_merge_qc_report.html",
@@ -28,11 +27,7 @@ rule merge_qc_report:
         config['parameter']['threads']['multiqc'],
     shell:
         """
-        # 确保输出目录存在
         mkdir -p {params.out_dir}
-        
-        # 运行 MultiQC
-        # 使用 ./ 确保路径从当前目录开始
         multiqc ./{params.search_dir} \
                 --force \
                 --outdir {params.out_dir} \
