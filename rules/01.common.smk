@@ -80,11 +80,11 @@ def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> li
     if merge_group:
         data_deliver.append('06.deg_enrich/DEG_merge/Global_PCA.pdf')
         data_deliver.append('06.deg_enrich/DEG_merge/All_Contrast_Differential_Peaks_Statistics.csv')
-        data_deliver.append('06.deg_enric/merge_enrich/')
+        data_deliver.append('06.deg_enrich/merge_enrich/')
     else:
         data_deliver.append('06.deg_enrich/DEG/Global_PCA.pdf')
         data_deliver.append('06.deg_enrich/DEG/All_Contrast_Differential_Peaks_Statistics.csv')
-        data_deliver.append('06.deg_enric/enrich/')
+        data_deliver.append('06.deg_enrich/enrich/')
     
     # ATAC Report
     data_deliver.append('05.ATAC_QC/multiqc_ATAC_report.html')

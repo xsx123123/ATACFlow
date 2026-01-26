@@ -80,7 +80,7 @@ rule multiqc_ATAC_QC:
         config['parameter']['threads']['multiqc'],
     shell:
         """
-        multiqc {params.fastqc_reports} \
+        multiqc {params.origin_reports} \
                 --force \
                 --outdir {params.report_dir} \
                 -i {params.title} \

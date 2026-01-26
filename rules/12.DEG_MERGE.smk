@@ -11,11 +11,11 @@ rule merge_DEG:
     conda:
         workflow.source_path("../envs/deg_deseq2.yaml"),
     log:
-        "logs/06.DEG/deseq2_peak_benchmark.log",
+        "logs/06.DEG/deseq2_peak.log",
     benchmark:
         "benchmarks/deseq2_peak_benchmark.txt",
     params:
-        deg_dir = '06.deg_enrich/DEG',
+        deg_dir = '06.deg_enrich/DEG_merge',
         samples = config['sample_csv'],
         paired = config['paired_csv'],
         PATH = workflow.source_path(config['parameter']['DEG']['PATH']),
@@ -39,7 +39,7 @@ rule merge_Enrichments:
     input:
         DEG_info = "06.deg_enrich/DEG_merge/All_Contrast_Differential_Peaks_Statistics.csv",
     output:
-        Enrichments_dir = directory("06.deg_enric/merge_enrich/"),
+        Enrichments_dir = directory("06.deg_enrich/merge_enrich/"),
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     conda:
@@ -52,6 +52,7 @@ rule merge_Enrichments:
         gene_col = config['parameter']['Enrichments']['gene_col'],
         r_script = workflow.source_path(config['parameter']['Enrichments']['PATH']),
         wrapper = workflow.source_path(config['parameter']['Enrichments']['PATH_py']),
+        lib_type = config['parameter']['Enrichments']['lib_type'],
         gene_regex = config['parameter']['Enrichments']['gene_regex'],
         deg_dir = "06.deg_enrich/DEG_merge",
         cutoff = config['parameter']['Enrichments'].get('cutoff', 0.05)
@@ -61,6 +62,7 @@ rule merge_Enrichments:
             --rscript {params.r_script} \
             --deg_info {input.DEG_info} \
             --deg_dir {params.deg_dir} \
+            --lib_type {params.lib_type} \
             -o {params.obo} \
             -a {params.go_annotation} \
             -d {output.Enrichments_dir} \

@@ -56,6 +56,7 @@ parameter:
     PATH_py: ../src/src/Enrichments/deg_enrich_wrapper.py
     gene_col: ENSEMBL
     gene_regex: gene:/
+    lib_type: ATAC
   qc_rsem_ultimate:
     path: ../src/src/gene_matrix/qc_rsem_ultimate.py
   trim:

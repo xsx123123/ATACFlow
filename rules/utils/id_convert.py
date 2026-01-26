@@ -10,7 +10,7 @@ from typing import List, Dict, Tuple
 from collections import defaultdict
 
 def _validate_df(df: pd.DataFrame, required_cols: List[str], index_col: str) -> None:
-    """[内部函数] 校验 DataFrame 的完整性和唯一性 (保持不变)"""
+    """[Internal function] Validate DataFrame integrity and uniqueness (unchanged)"""
     try:
         from snakemake_logger_plugin_rich_loguru import get_analysis_logger
         logger = get_analysis_logger()
@@ -18,41 +18,41 @@ def _validate_df(df: pd.DataFrame, required_cols: List[str], index_col: str) -> 
         import logging
         logger = logging.getLogger("Analysis")
 
-    # 1. 校验必填列
+    # 1. Validate required columns
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
-        rprint(f"[bold red]❌ 样本表格式错误！缺失列: {missing_cols}[/bold red]")
+        rprint(f"[bold red]❌ Sample table format error! Missing columns: {missing_cols}[/bold red]")
         sys.exit(1)
 
-    # 2. 校验 ID 唯一性
+    # 2. Validate ID uniqueness
     if df[index_col].duplicated().any():
         duplicated_ids = df[df[index_col].duplicated()][index_col].unique().tolist()
-        rprint(f"[bold red]❌ 样本ID不唯一！重复ID: {duplicated_ids}[/bold red]")
+        rprint(f"[bold red]❌ Sample IDs are not unique! Duplicate IDs: {duplicated_ids}[/bold red]")
         sys.exit(1)
 
-    # 3. 校验空值
+    # 3. Validate null values
     if df[required_cols].isnull().any().any():
         nan_rows = df[df[required_cols].isnull().any(axis=1)][index_col].tolist()
-        rprint(f"[yellow]⚠️ 警告: 样本存在空值: {nan_rows}[/yellow]")
+        rprint(f"[yellow]⚠️ Warning: Samples contain null values: {nan_rows}[/yellow]")
 
 def load_samples(csv_path, required_cols=None, index_col="sample",logger = None) -> Tuple[bool, Dict]:
     """
-    读取 CSV，自动生成 BAM 路径。
-    
+    Read CSV and automatically generate BAM paths.
+
     Returns:
-        merge_group (bool): 只有当【所有组】的样本数都 > 1 时，才返回 True。
-        samples_dict (dict): 样本信息字典。
+        merge_group (bool): Returns True only when all groups have > 1 samples.
+        samples_dict (dict): Dictionary containing sample information.
     """
     if required_cols is None:
         required_cols = [index_col, "group"]
 
     file_path = Path(csv_path)
     if not file_path.exists():
-        rprint(f"[bold red]❌ Error: 找不到样本表文件: {file_path}[/bold red]")
+        rprint(f"[bold red]❌ Error: Sample table file not found: {file_path}[/bold red]")
         sys.exit(1)
 
     try:
-        # 读取并清洗
+        # Read and clean data
         df = pd.read_csv(file_path, dtype=str, comment='#')
         df.columns = df.columns.str.strip()
         df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
@@ -60,25 +60,25 @@ def load_samples(csv_path, required_cols=None, index_col="sample",logger = None)
         _validate_df(df, required_cols, index_col)
 
         # =========================================================
-        # 【核心修改】 检查逻辑：必须所有组样本数 > 1
+        # [Core modification] Check logic: all groups must have > 1 sample
         # =========================================================
         group_counts = df['group'].value_counts()
-        
-        # .all() : 只有当 Series 中所有值都为 True 时，结果才为 True
+
+        # .all() : Returns True only when all values in the Series are True
         merge_group = (group_counts > 1).all()
-        
-        # 详细的 Debug 信息
+
+        # Detailed debug information
         if merge_group:
-            logger.info(f"[bold green]✅ 合并条件满足:[/bold green] 所有组均包含生物学重复 (All groups have >1 samples).")
+            logger.info(f"[bold green]✅ Merge condition satisfied:[/bold green] All groups contain biological replicates (All groups have >1 samples).")
             logger.info(f"   Merge Mode -> [bold green]ON[/bold green]")
         else:
-            # 找出哪些组是单样本，导致了 False
+            # Find which groups are single-sample, causing False
             single_sample_groups = group_counts[group_counts <= 1].index.tolist()
-            logger.warning(f"[bold yellow]⚠️ 合并条件未满足:[/bold yellow] 存在单样本组 (Singletons detected).")
-            logger.warning(f"   导致无法完全合并的组: [bold red]{single_sample_groups}[/bold red]")
+            logger.warning(f"[bold yellow]⚠️ Merge condition not satisfied:[/bold yellow] Single-sample groups detected (Singletons detected).")
+            logger.warning(f"   Groups preventing full merge: [bold red]{single_sample_groups}[/bold red]")
             logger.warning(f"   Merge Mode -> [bold red]OFF[/bold red]")
 
-        # 自动构建 BAM 路径
+        # Automatically construct BAM paths
         df['bam'] = df[index_col].apply(
             lambda x: f"02.mapping/Bowtie2/{x}/{x}.sorted.bam"
         )
@@ -87,54 +87,54 @@ def load_samples(csv_path, required_cols=None, index_col="sample",logger = None)
         return merge_group, samples_dict
 
     except Exception as e:
-        logger.warning(f"[bold red]❌ Error: load_samples 解析失败: {e}[/bold red]")
+        logger.warning(f"[bold red]❌ Error: load_samples parsing failed: {e}[/bold red]")
         sys.exit(1)
 
 def load_contrasts(csv_path, samples_dict):
     """
-    解析对比表，并根据 samples_dict 匹配对应的 BAM 文件路径。
+    Parse contrast table and match corresponding BAM file paths based on samples_dict.
     """
     file_path = Path(csv_path)
     if not file_path.exists():
-        print(f"❌ Error: 找不到对比表文件: {file_path}", file=sys.stderr)
+        print(f"❌ Error: Contrast table file not found: {file_path}", file=sys.stderr)
         sys.exit(1)
 
     try:
-        # 1. 读取并清洗
+        # 1. Read and clean data
         df = pd.read_csv(file_path, dtype=str, comment='#')
         df.columns = df.columns.str.strip()
         df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
 
         if "Control" not in df.columns or "Treat" not in df.columns:
-            print(f"❌ Error: contrasts.csv 必须包含 'Control' 和 'Treat' 列", file=sys.stderr)
+            print(f"❌ Error: contrasts.csv must contain 'Control' and 'Treat' columns", file=sys.stderr)
             sys.exit(1)
 
         all_contrasts = []
         contrast_map = {}
 
-        # 2. 遍历每一行对比
+        # 2. Iterate through each contrast row
         for _, row in df.iterrows():
             ctrl_grp = row['Control']
             treat_grp = row['Treat']
             c_name = f"{ctrl_grp}_vs_{treat_grp}"
-            
-            # 3. 从 samples_dict 中筛选 BAM
-            # 因为 load_samples 已经保证了每行都有 'bam' 键，这里可以直接取
+
+            # 3. Filter BAMs from samples_dict
+            # Since load_samples already ensures each row has a 'bam' key, we can directly access it
             bams_ctrl = [
-                info['bam'] for info in samples_dict.values() 
+                info['bam'] for info in samples_dict.values()
                 if info['group'] == ctrl_grp
             ]
             bams_treat = [
-                info['bam'] for info in samples_dict.values() 
+                info['bam'] for info in samples_dict.values()
                 if info['group'] == treat_grp
             ]
 
-            # 4. 仅检查是否找到了样本（逻辑检查），不检查文件物理存在
+            # 4. Only check if samples were found (logical check), not physical file existence
             if not bams_ctrl:
-                print(f"⚠️ Warning: 组别 '{ctrl_grp}' 没有任何样本，跳过 {c_name}", file=sys.stderr)
+                print(f"⚠️ Warning: Group '{ctrl_grp}' has no samples, skipping {c_name}", file=sys.stderr)
                 continue
             if not bams_treat:
-                print(f"⚠️ Warning: 组别 '{treat_grp}' 没有任何样本，跳过 {c_name}", file=sys.stderr)
+                print(f"⚠️ Warning: Group '{treat_grp}' has no samples, skipping {c_name}", file=sys.stderr)
                 continue
 
             all_contrasts.append(c_name)
@@ -142,65 +142,65 @@ def load_contrasts(csv_path, samples_dict):
                 "b1": bams_ctrl,
                 "b2": bams_treat
             }
-            
+
         return all_contrasts, contrast_map
 
     except Exception as e:
-        print(f"❌ Error: load_contrasts 解析失败: {e}", file=sys.stderr)
+        print(f"❌ Error: load_contrasts parsing failed: {e}", file=sys.stderr)
         sys.exit(1)
 
 def parse_groups(samples_dict: Dict) -> Dict[str, List[str]]:
     """
-    将 SampleID -> Info 的字典反转为 Group -> [SampleID_1, SampleID_2] 的字典。
-    
+    Invert the SampleID -> Info dictionary to Group -> [SampleID_1, SampleID_2] dictionary.
+
     Args:
-        samples_dict: load_samples 返回的字典
-        
+        samples_dict: Dictionary returned by load_samples
+
     Returns:
         dict: {'Control': ['s1', 's2'], 'Treat': ['s3', 's4']}
     """
-    # 使用 defaultdict(list) 可以省去 "if key not in dict" 的判断，代码更简洁
+    # Using defaultdict(list) eliminates the need for "if key not in dict" checks, making code more concise
     groups = defaultdict(list)
-    
+
     for sample_id, info in samples_dict.items():
-        # 获取该样本的组名
+        # Get the group name for this sample
         group_name = info.get('group')
-        
+
         if group_name:
             groups[group_name].append(sample_id)
         else:
-            # 防御性编程：万一没有 group 字段 (虽然 load_samples 校验过)
+            # Defensive programming: in case there's no group field (though load_samples validates this)
             rprint(f"[red]⚠️ Warning: Sample {sample_id} has no group info![/red]")
-            
-    return dict(groups) # 转回普通字典返回
+
+    return dict(groups) # Convert back to regular dictionary before returning
 
 
 if __name__ == "__main__":
     import tempfile
-    
-    # 场景 1: 完美情况 (所有组都有重复) -> 期望 True
+
+    # Scenario 1: Perfect case (all groups have replicates) -> Expect True
     csv_perfect = """sample, sample_name, group
     s1, A_rep1, GroupA
     s2, A_rep2, GroupA
     s3, B_rep1, GroupB
     s4, B_rep2, GroupB
     """
-    
-    # 场景 2: 混合情况 (GroupA 有重复，GroupB 只有一个) -> 期望 False
+
+    # Scenario 2: Mixed case (GroupA has replicates, GroupB has only one) -> Expect False
     csv_mixed = """sample, sample_name, group
     s1, A_rep1, GroupA
     s2, A_rep2, GroupA
     s3, B_rep1, GroupB
     """
 
-    print("\n--- 测试场景 1: 所有组都有重复 (Expect: True) ---")
+    print("\n--- Test Scenario 1: All groups have replicates (Expect: True) ---")
     with tempfile.NamedTemporaryFile(mode='w+', suffix='.csv', delete=False) as tmp:
         tmp.write(csv_perfect)
         path1 = tmp.name
     load_samples(path1)
     os.remove(path1)
 
-    print("\n--- 测试场景 2: 混合情况 (Expect: False) ---")
+    print("\n--- Test Scenario 2: Mixed case (Expect: False) ---")
     with tempfile.NamedTemporaryFile(mode='w+', suffix='.csv', delete=False) as tmp:
         tmp.write(csv_mixed)
         path2 = tmp.name

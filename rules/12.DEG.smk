@@ -39,7 +39,7 @@ rule Enrichments:
     input:
         DEG_info = "06.deg_enrich/DEG/All_Contrast_Differential_Peaks_Statistics.csv",
     output:
-        Enrichments_dir = directory("06.deg_enric/enrich/"),
+        Enrichments_dir = directory("06.deg_enrichs/enrich/"),
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     conda:
@@ -53,6 +53,7 @@ rule Enrichments:
         r_script = workflow.source_path(config['parameter']['Enrichments']['PATH']),
         wrapper = workflow.source_path(config['parameter']['Enrichments']['PATH_py']),
         gene_regex = config['parameter']['Enrichments']['gene_regex'],
+        lib_type = config['parameter']['Enrichments']['lib_type'],
         deg_dir = "06.deg_enrich/DEG",
         cutoff = config['parameter']['Enrichments'].get('cutoff', 0.05)
     shell:
@@ -61,6 +62,7 @@ rule Enrichments:
             --rscript {params.r_script} \
             --deg_info {input.DEG_info} \
             --deg_dir {params.deg_dir} \
+            --lib_type {params.lib_type} \
             -o {params.obo} \
             -a {params.go_annotation} \
             -d {output.Enrichments_dir} \
