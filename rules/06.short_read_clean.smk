@@ -4,7 +4,37 @@ import os
 
 rule short_read_fastp:
     """
-    Trim adapters and filter low-quality reads using Fastp
+    Perform comprehensive adapter trimming and quality filtering on paired-end reads using Fastp.
+
+    This rule processes raw sequencing reads to remove adapter sequences, low-quality bases,
+    and short fragments, generating high-quality cleaned reads for downstream ATAC-seq analysis.
+    Fastp is an ultra-fast all-in-one preprocessing tool that provides exceptional performance
+    and comprehensive quality control statistics.
+
+    Key processing steps performed include:
+    - Adapter sequence trimming using a curated adapter database
+    - Quality-based trimming of low-quality bases from read ends
+    - Global trimming by quality threshold (sliding window approach)
+    - Filtering of reads below minimum length requirements
+    - PolyG tail trimming (for NovaSeq/NextSeq data)
+    - Quality filtering based on overall read quality
+
+    Fastp generates comprehensive HTML and JSON reports documenting:
+    - Pre- and post-processing quality statistics
+    - Adapter content and trimming efficiency
+    - Quality score distributions before and after filtering
+    - GC content and sequence composition analysis
+    - Duplication rate estimation
+    - Insert size distribution (for paired-end data)
+
+    For ATAC-seq experiments, proper trimming is critical because:
+    - Adapter contamination can severely impact mapping efficiency
+    - Low-quality reads introduce noise in peak calling
+    - Proper fragment length selection improves nucleosome positioning analysis
+    - Clean data is essential for accurate Tn5 insertion site correction
+
+    The cleaned reads serve as input for all downstream analysis steps including
+    read alignment, peak calling, and transcription factor footprinting analysis.
     """
     input:
         md5_check = "01.qc/md5_check.tsv",
@@ -50,7 +80,32 @@ rule short_read_fastp:
 
 rule multiqc_trim:
     """
-    Run MultiQC to aggregate fastp trimming reports
+    Aggregate Fastp trimming reports into a unified quality control summary using MultiQC.
+
+    This rule collects all individual Fastp trimming reports and synthesizes them into
+    a single interactive HTML report that enables cross-sample comparison of trimming
+    statistics and quality improvements. MultiQC parses the Fastp JSON output and
+    presents the preprocessing results in a coherent, visual format.
+
+    Key features of this aggregated report include:
+    - Side-by-side comparison of pre- and post-trimming quality metrics
+    - Summary of adapter content and trimming efficiency across all samples
+    - Visualization of read length distributions after quality filtering
+    - Assessment of how many reads were retained or discarded
+    - Identification of samples with exceptional trimming patterns
+    - Interactive plots that can be customized and downloaded
+    - Exportable data tables for further analysis
+
+    By aggregating trimming results from all samples, this report enables:
+    - Evaluation of overall trimming effectiveness across the experiment
+    - Detection of systematic issues affecting library preparation
+    - Identification of outlier samples that may require reprocessing
+    - Documentation of data processing steps for publication and reproducibility
+    - Quality assurance before proceeding to read alignment
+
+    This report, together with the raw and trimmed FastQC reports, provides a
+    comprehensive audit trail of data quality improvements through the preprocessing
+    pipeline, ensuring transparency and reproducibility of the ATAC-seq analysis.
     """
     input:
         md5_check = "01.qc/md5_check.tsv",

@@ -10,10 +10,20 @@ sample_csv: /data/jzhang/project/Temp/atac_human_PRJNA427322/01.workflow/samples
 paired_csv: /data/jzhang/project/Temp/atac_human_PRJNA427322/01.workflow/contrasts.csv
 # workflow
 workflow: /data/jzhang/project/Temp/atac_human_PRJNA427322/01.workflow
-# RNAflow Output file
+# ATACFlow Output file
 data_deliver: /data/jzhang/project/Temp/atac_human_PRJNA427322/02.data_deliver
 # wheather run in HPC Cluster
 execution_mode: local #local,cluster
 queue_id: default
 # Fragment Library Types
 Library_Types: fr-firststrand # fr-unstranded,fr-firststrand,fr-secondstrand
+# only run QC for ATAC-seq
+only_qc: true
+# wheather generate HTML report for ATAC-seq
+report: true
+# wheather differential peak analysis for ATAC-seq
+diff_peaks: true
+# wheather fastq_screen for ATAC-seq
+fastq_screen: true
+# ---------------------------------------------------------------------- #
+loki_url: "http://122.205.67.97:3100"

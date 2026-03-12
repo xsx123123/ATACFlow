@@ -35,7 +35,34 @@ def get_organelle_names(wildcards):
 
 rule Bowtie2_mapping:
     """
-    Map paired-end reads to reference genome using Bowtie2
+    Align paired-end ATAC-seq reads to the reference genome using Bowtie2.
+
+    This rule performs the critical step of mapping cleaned ATAC-seq reads to the
+    reference genome using Bowtie2, a fast and memory-efficient aligner optimized
+    for short reads. Proper alignment is essential for all downstream ATAC-seq
+    analyses including peak calling and transcription factor footprinting.
+
+    Bowtie2 is configured with parameters specifically optimized for ATAC-seq:
+    - --very-sensitive: Enables high sensitivity alignment for better mapping rates
+    - -X 2000: Sets maximum fragment length to 2000bp to accommodate nucleosome-free
+                regions and mono-/di-nucleosome fragments typical in ATAC-seq
+    - --no-mixed: Disables unpaired alignments, ensuring only proper pairs are considered
+    - --no-discordant: Excludes discordant read pairs from alignment results
+
+    The alignment process uses the cleaned, adapter-trimmed reads from the previous
+    step and generates an unsorted BAM file as output. This BAM file serves as input
+    for subsequent processing steps including coordinate sorting, duplicate marking,
+    and quality filtering.
+
+    For ATAC-seq experiments, accurate alignment is crucial because:
+    - It determines the genomic location of Tn5 transposase insertions
+    - Mapping quality directly impacts peak calling sensitivity and specificity
+    - Proper alignment is required for nucleosome positioning analysis
+    - It enables identification of accessible chromatin regions
+
+    The resulting alignments undergo extensive quality control and filtering in
+    subsequent rules to ensure only high-quality, properly paired reads are used
+    for downstream analysis.
     """
     input:
         r1 = "01.qc/short_read_trim/{sample}.R1.trimed.fq.gz",
@@ -135,7 +162,7 @@ rule samtools_flagst:
     resources:
         **rule_resource(config, 'medium_resource',  skip_queue_on_local=True,logger = logger),
     conda:
-        workflow.source_path("../envs/bwa2.yaml"),
+        workflow.source_path("../envs/samtools.yaml"),
     message:
         "Running flagst for MarkDuplicates of BAM : {input.bam}",
     log:
@@ -161,7 +188,7 @@ rule samtools_stats:
     resources:
         **rule_resource(config, 'medium_resource',  skip_queue_on_local=True,logger = logger),
     conda:
-        workflow.source_path("../envs/bwa2.yaml"),
+        workflow.source_path("../envs/samtools.yaml"),
     message:
         "Running stats for MarkDuplicates of BAM : {input.bam}",
     log:
@@ -352,7 +379,33 @@ rule filter_proper_pairs:
 
 rule atac_seq_shift:
     """
-    Perform ATAC-seq specific shift to account for Tn5 transposase binding bias
+    Perform ATAC-seq specific read shifting to correct for Tn5 transposase binding bias.
+
+    This rule applies a critical correction to ATAC-seq alignments to account for the
+    binding properties of the Tn5 transposase, which creates a 9bp duplication during
+    the tagmentation reaction. This shift is essential for accurate determination of
+    transcription factor binding sites and open chromatin region boundaries.
+
+    The Tn5 transposase binds as a dimer and inserts adapters separated by 9 base pairs.
+    Consequently:
+    - Reads mapping to the positive strand are shifted +4 bp
+    - Reads mapping to the negative strand are shifted -5 bp
+    - This centers the read pileup over the actual Tn5 insertion site
+
+    This rule uses deepTools' alignmentSieve with the --ATACshift parameter, which
+    automatically applies this standard ATAC-seq correction. The shifted BAM file
+    is then re-sorted and indexed to maintain compatibility with downstream tools.
+
+    Proper shifting is critical for ATAC-seq analysis because:
+    - It improves the resolution of transcription factor footprinting analysis
+    - It ensures accurate calling of peak boundaries
+    - It enables proper TSS enrichment calculations
+    - It provides more precise nucleosome positioning information
+    - It is required for TOBIAS footprinting and other high-resolution analyses
+
+    The shifted BAM file serves as the primary input for peak calling, bigwig
+    generation, TSS enrichment analysis, and all subsequent downstream analyses
+    in the ATAC-seq workflow.
     """
     input:
         bam = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam',

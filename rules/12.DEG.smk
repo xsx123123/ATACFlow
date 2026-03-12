@@ -1,6 +1,57 @@
 #!/usr/bin/snakemake
 # -*- coding: utf-8 -*-
+"""
+ATACFlow Pipeline - Differential Accessibility Analysis Module
+
+This module performs differential accessibility analysis to identify chromatin regions
+that show significant changes in accessibility between different experimental conditions.
+Using DESeq2, it provides robust statistical analysis of count data from ATAC-seq
+experiments, enabling the identification of regulatory regions associated with
+biological processes of interest.
+
+Key Components:
+- DEG: Performs differential accessibility analysis using DESeq2 on individual sample peaks
+- Enrichments: Performs gene ontology enrichment analysis on differential peaks
+
+This module is essential for understanding the regulatory changes that occur between
+experimental conditions, linking differences in chromatin accessibility to potential
+changes in gene expression and cellular phenotype.
+"""
+
 rule DEG:
+    """
+    Perform differential accessibility analysis using DESeq2 on the consensus peakset.
+
+    This rule identifies chromatin regions that show statistically significant differences
+    in accessibility between experimental conditions using DESeq2, a powerful tool for
+    differential analysis of count data. DESeq2 models count data using a negative
+    binomial distribution, providing robust statistical inference even with small
+    numbers of biological replicates.
+
+    Key steps in the differential accessibility analysis:
+    - Normalization of read counts across samples
+    - Estimation of dispersion parameters
+    - Statistical testing for differential accessibility
+    - Multiple testing correction using FDR (False Discovery Rate)
+    - Generation of visualizations including PCA plots and MA plots
+
+    Important analysis parameters:
+    - LFC (log2 fold change) threshold for calling significant differences
+    - P-value (adjusted) threshold for statistical significance
+    - Sample information from sample_csv for experimental design
+    - Contrast information from paired_csv for comparisons of interest
+
+    Outputs from this analysis include:
+    - Global PCA plot showing sample relationships and clustering
+    - Detailed results tables for each contrast with statistics
+    - Summary statistics of differential peaks across all comparisons
+    - Various diagnostic plots and visualizations
+
+    The differential accessibility results provide the foundation for understanding
+    the regulatory landscape changes between experimental conditions, enabling the
+    identification of key regulatory regions and potential target genes associated
+    with the biological processes under investigation.
+    """
     input:
         counts = "04.consensus/consensus_counts_matrix_ann.txt",
     output:
@@ -36,6 +87,38 @@ rule DEG:
         """
 
 rule Enrichments:
+    """
+    Perform gene ontology enrichment analysis on differentially accessible peaks.
+
+    This rule performs functional enrichment analysis to identify biological processes,
+    molecular functions, and cellular components that are significantly associated with
+    the genes near differentially accessible chromatin regions. This analysis links
+    changes in chromatin accessibility to potential functional consequences at the
+    gene and pathway level.
+
+    Key enrichment analysis steps:
+    - Assignment of peaks to putative target genes based on proximity
+    - Statistical testing for enrichment of gene ontology terms
+    - Multiple testing correction to control false discovery rate
+    - Generation of enrichment results tables and visualizations
+
+    Important parameters for enrichment analysis:
+    - Gene ontology (GO) database (OBO file)
+    - GO annotation file for the specific organism
+    - Cutoff for statistical significance (default: 0.05)
+    - Method for assigning peaks to genes
+    - Regular expression pattern for extracting gene identifiers
+
+    The enrichment analysis provides valuable biological context by:
+    - Identifying biological processes associated with accessibility changes
+    - Revealing potential regulatory pathways affected by the experiment
+    - Linking chromatin changes to specific gene functions
+    - Generating testable hypotheses about regulatory mechanisms
+
+    The results from this analysis, together with the differential accessibility results,
+    provide a comprehensive view of the regulatory changes occurring between experimental
+    conditions, enabling deeper biological interpretation of the ATAC-seq data.
+    """
     input:
         DEG_info = "06.deg_enrich/DEG/All_Contrast_Differential_Peaks_Statistics.csv",
     output:

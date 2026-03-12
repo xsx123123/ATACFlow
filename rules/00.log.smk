@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+ATACFlow Pipeline - Logging Initialization Module
+
+This module sets up the unified logging system for the ATAC-seq analysis pipeline,
+providing consistent logging across all rules and ensuring proper tracking of
+pipeline execution for debugging and reproducibility.
+
+Key Components:
+- Unified logger initialization using snakemake_logger_plugin_rich_loguru
+- System information logging (Python version, platform, working directory)
+- Pipeline configuration parameter logging
+- Execution environment documentation
+
+This module is imported first by the main Snakefile to ensure logging is available
+to all subsequent rules and provides a comprehensive audit trail of pipeline execution.
+"""
+
 import sys
 import os
 import platform

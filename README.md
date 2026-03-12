@@ -2,6 +2,15 @@
 
 ATACFlow是一个全面的ATAC-seq数据分析流程，涵盖了从原始数据质控到最终报告生成的完整分析过程。该流程针对植物基因组特性进行了优化，能够有效处理细胞器污染等问题。
 
+## 🌟 核心特色 (Core Highlights)
+
+ATACFlow 不仅仅是一个基础的比对和 Peak Calling 流程，它集成了多项前沿特性：
+
+*   **高级足迹分析 (TOBIAS Footprinting)**: 集成了完整的 TOBIAS 流程（ATACorrect -> EstimateFootprints -> BINDetect），能够以单碱基分辨率推断转录因子的动态结合。
+*   **AI 驱动的自动化报告**: 利用大语言模型 (LLM) 驱动的 AI 引擎，结合容器化技术 (Apptainer/Docker)，自动生成包含生物学解读的交互式分析报告。
+*   **植物学深度优化**: 针对植物基因组中高比例的线粒体/叶绿体污染，实现了动态剔除和结构性过滤算法，最大化保留有效读段。
+*   **灵活的 Peak Calling 策略**: 默认采用 "Group Merge -> Call Peak" 策略，显著提升了生物学重复样本中弱信号 Peak 的检测灵敏度。
+
 ## 📋 流程概览
 
 ATACFlow包含以下主要分析阶段：
@@ -268,6 +277,15 @@ ATACFlow遵循以下设计理念：
 3. **植物学优化**: 针对植物基因组特点进行特殊优化处理
 4. **自动化交付**: 自动生成完整的分析报告和交付清单
 5. **可重现性**: 使用Snakemake确保分析流程的可重现性
+
+## 🗺️ 路线图与未来改进 (Roadmap)
+
+为了进一步提升流程的稳健性和科学性，计划在后续版本中引入以下改进：
+
+1.  **IDR (Irreproducible Discovery Rate) 支持**: 引入 ENCODE 推荐的 IDR 框架，定量评估生物学重复之间的一致性，为 Peak 过滤提供更严谨的统计学依据。
+2.  **自动 Blacklist 过滤**: 针对常见物种（如人、小鼠、拟南芥等）集成 ENCODE Blacklist 自动过滤步骤，剔除已知的信号伪影区域。
+3.  **动态 QC 阈值预警**: 在 MultiQC 报告中集成基于 `ataqv` 指标（如 TSS Enrichment Score, Fragment Length Distribution）的自动判定系统，对低质量样本进行实时报警。
+4.  **调控网络增强**: 深化 TOBIAS 结果与 DEG 结果的关联分析，构建更精细的 TF-Target 基因调控网络。
 
 ## 🚀 使用方法
 

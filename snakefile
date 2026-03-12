@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # *---utf-8---*
-# Version: RNAFlow_v0.1
+# Version: ATACFlow v0.0.3
 # Author : JZHANG
 
 import sys
@@ -57,7 +57,10 @@ include: 'rules/09.MergeMACS2.smk'
 include: 'rules/10.ATAC_QC.smk'
 include: 'rules/12.DEG.smk'
 include: 'rules/12.DEG_MERGE.smk'
+include: 'rules/11.motifs.smk'
 include: 'rules/14.Merge_qc.smk'
+include: 'rules/15.deliver.smk'
+include: 'rules/16.Report.smk'
 # --------- 5. Target Rule --------- #
 rule all:
     input:

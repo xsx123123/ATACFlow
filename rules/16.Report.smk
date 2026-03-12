@@ -1,4 +1,48 @@
+#!/usr/bin/snakemake
+# -*- coding: utf-8 -*-
+"""
+ATACFlow Pipeline - Report Generation Module
+
+This module handles the generation of the final comprehensive HTML report for
+ATAC-seq analysis results. It creates a structured, interactive report that
+summarizes all key findings, quality metrics, and analysis results in a
+user-friendly format suitable for sharing and publication.
+
+Key Components:
+- generate_docker_json: Prepares project metadata and summary information for reporting
+- Report: Generates the final interactive HTML report using a Docker container
+
+This module creates a professional, comprehensive report that includes all
+essential analysis results, quality control metrics, and visualizations,
+providing a complete summary of the ATAC-seq experiment and analysis.
+"""
+
 rule generate_docker_json:
+    """
+    Generate project metadata and summary information for the final report.
+
+    This rule prepares a structured JSON file containing comprehensive project
+    metadata, sample statistics, and file path information required for generating
+    the final interactive ATAC-seq analysis report. The JSON file serves as the
+    primary configuration and data source for the report generation container.
+
+    Key information included in the project summary:
+    - Project metadata (client name, species, genome version, analysis date)
+    - Pipeline version information for reproducibility
+    - Sample statistics (total number of samples, number of experimental groups)
+    - File path mappings for all analysis results and visualizations
+    - Configuration for the report generation container
+
+    The generated JSON file includes:
+    - project_meta: Comprehensive project information and metadata
+    - stats: Sample and group statistics
+    - input_files: File path mappings for all report components
+
+    This configuration file is essential for the report generation process, as it
+    provides the container with all necessary information to locate, organize, and
+    display the analysis results in the final interactive HTML report. The JSON
+    file ensures that the report generation process is reproducible and configurable.
+    """
     input:
         manifest_json = os.path.join(config['data_deliver'],'report_data','delivery_manifest.json'),
         manifest_md5 = os.path.join(config['data_deliver'],'report_data','delivery_manifest.md5'),
@@ -62,6 +106,38 @@ rule generate_docker_json:
             json.dump(final_data, f, indent=2, ensure_ascii=False)
 
 rule Report:
+    """
+    Generate the final comprehensive interactive HTML report for ATAC-seq analysis.
+
+    This rule creates a professional, interactive HTML report that summarizes all
+    key findings from the ATAC-seq analysis, including quality control metrics,
+    read alignment statistics, peak calling results, differential accessibility
+    analysis, and functional enrichment results. The report is generated using
+    a specialized Docker container that packages all necessary reporting tools
+    and templates.
+
+    Key report components typically include:
+    - Executive summary with project overview and key findings
+    - Quality control metrics and visualizations for all samples
+    - Read alignment statistics and mapping quality assessments
+    - Peak calling results and genomic distribution of accessible regions
+    - Differential accessibility analysis with statistical summaries
+    - Functional enrichment analysis for differentially accessible regions
+    - Interactive visualizations for exploring the data
+    - Detailed methods section describing the analysis pipeline
+
+    The report generation process:
+    1. Uses Apptainer (Singularity) to run the reporting Docker container
+    2. Mounts all necessary analysis results and configuration files
+    3. Executes the reporting pipeline within the container environment
+    4. Generates a self-contained HTML report with embedded visualizations
+
+    The final HTML report is completely self-contained, meaning it can be viewed
+    in any modern web browser without requiring additional software or data files.
+    This makes it ideal for sharing with collaborators, including in publications,
+    or for archival purposes. The report provides a complete and reproducible
+    summary of the entire ATAC-seq analysis workflow and results.
+    """
     input:
         DataDeliver(config),
         json_file = os.path.join(config['data_deliver'], "report_data/project_summary.json"),

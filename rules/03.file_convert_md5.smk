@@ -1,5 +1,22 @@
 #!/usr/bin/snakemake
 # -*- coding: utf-8 -*-
+"""
+ATACFlow Pipeline - Raw Data Processing and MD5 Validation Module
+
+This module handles the initial processing of raw sequencing data by creating symbolic
+links to the original files and performing comprehensive MD5 checksum validation to
+ensure data integrity throughout the analysis pipeline.
+
+Key Components:
+- seq_preprocessor: Creates organized symbolic links and generates MD5 checksums
+- check_md5: Validates MD5 checksums against the generated reference file
+
+The module ensures that all raw data files are properly organized, accessible, and
+verified for integrity before proceeding to downstream quality control and analysis steps.
+This is critical for maintaining reproducibility and detecting any data corruption issues
+early in the pipeline.
+"""
+
 import os
 
 rule seq_preprocessor:

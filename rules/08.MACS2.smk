@@ -4,8 +4,35 @@ import os
 
 rule macs2_callpeak:
     """
-    Call peaks using MACS2 on the shifted BAM file.
-    Note: Since the BAM is already shifted, we use BAMPE mode without additional shift parameters.
+    Identify open chromatin regions (peaks) using MACS2 on the shifted ATAC-seq BAM file.
+
+    This rule performs peak calling, the core analysis step in ATAC-seq experiments,
+    to identify genomic regions with significant chromatin accessibility. MACS2 (Model-based
+    Analysis for ChIP-Seq) is used here in a configuration optimized for ATAC-seq data
+    to detect regions of open chromatin where Tn5 transposase insertion is significantly
+    enriched relative to background.
+
+    Key parameters for ATAC-seq peak calling:
+    - -f BAMPE: Uses paired-end information directly for improved peak modeling
+    - -g {genome_size}: Specifies effective genome size for proper p-value calculation
+    - -q {qvalue}: Sets q-value threshold for statistical significance (FDR control)
+    - --keep-dup all: Retains all duplicates (already marked and filtered in prior steps)
+    - -B --SPMR: Generates bedGraph files normalized by reads per million mapped reads
+
+    Since the input BAM file has already been shifted to correct for Tn5 transposase bias,
+    no additional shifting parameters are required in MACS2. The BAMPE mode leverages
+    the paired-end nature of ATAC-seq data to build a more accurate model of fragment
+    size distribution and peak shape.
+
+    Peak calling with MACS2 generates several important output files:
+    - _peaks.narrowPeak: Standard narrowPeak format with peak coordinates and statistics
+    - _peaks.xls: Detailed peak information in Excel-compatible format
+    - _summits.bed: Precise summit coordinates for each peak (single base resolution)
+    - _treat_pileup.bdg: Normalized read coverage signal track in bedGraph format
+
+    These peak calls represent the accessible chromatin landscape of the sample and serve
+    as the foundation for all downstream analyses including annotation, differential
+    accessibility analysis, transcription factor motif analysis, and pathway enrichment.
     """
     input:
         bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',

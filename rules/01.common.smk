@@ -1,98 +1,159 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# loading packages
+"""
+ATACFlow Pipeline - Common Utility Functions Module
+
+This module provides essential utility functions that are used across multiple
+rules in the ATAC-seq analysis pipeline. It handles core functionality including:
+
+Key Components:
+- Data delivery orchestration (DataDeliver function)
+- Report data collection (ReportData function)
+- Sample data directory resolution
+- Reference index validation
+- Genome version compatibility checking
+"""
+
 import os
 import glob
+import sys
+import time
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Union, List, Callable
 from rich import print as rich_print
-# Target rule function
-def DataDeliver(config:dict = None,merge_group = False,groups:dict = None) -> list:
+from utils.datadeliver import (
+    qc_clean, mapping, peak_calling, motif_analysis, 
+    consensus_peaks, diff_peaks, merge_group_analysis, atac_qc
+)
+
+from snakemake_logger_plugin_rich_loguru import get_analysis_logger
+logger = get_analysis_logger()
+
+_qc_warning_logged = False
+
+def DataDeliver(config: Dict = None, samples: Dict = None, 
+                merge_group: bool = False, groups: Dict = None) -> List[str]:
     """
-    This function performs Bioinformation analysis on the input configuration
-    and returns a list of results.
+    Main data delivery orchestrator for ATAC-seq pipeline.
+    Controls the flow of the pipeline based on 'only_qc' and specific module flags.
     """
-    # short-read raw-data qc result
-    data_deliver = ["01.qc/md5_check.tsv",
-                    os.path.join('00.raw_data',config['convert_md5']),
-                    os.path.join('00.raw_data',config['convert_md5'],"raw_data_md5.json")
-                    ]
-    # fastq-screen
-    if config['parameter']['fastq_screen']['run']:
-        data_deliver.extend(expand("01.qc/fastq_screen_r1/{sample}_R1_screen.txt",
-                                          sample=samples.keys()))
-        data_deliver.extend(expand("01.qc/fastq_screen_r2/{sample}_R2_screen.txt",
-                                          sample=samples.keys()))
+    config = config or {}
+    samples = samples or {}
+    groups = groups or {}
+
+    convert_md5_path = config.get('convert_md5', 'md5_check') 
+    data_deliver = [
+        "01.qc/md5_check.tsv",
+        os.path.join('00.raw_data', convert_md5_path),
+        os.path.join('00.raw_data', convert_md5_path, "raw_data_md5.json")
+    ]
+
+    if config.get('parameter', {}).get('fastq_screen', {}).get('run'):
+        data_deliver.extend(expand("01.qc/fastq_screen_r1/{sample}_R1_screen.txt", sample=samples.keys()))
+        data_deliver.extend(expand("01.qc/fastq_screen_r2/{sample}_R2_screen.txt", sample=samples.keys()))
         data_deliver.append("01.qc/fastq_screen_multiqc_r1/multiqc_r1_fastq_screen_report.html")
         data_deliver.append("01.qc/fastq_screen_multiqc_r2/multiqc_r2_fastq_screen_report.html")
-    # fastqc & multiqc
-    data_deliver.append("01.qc/short_read_r1_multiqc/multiqc_r1_raw-data_report.html")
-    data_deliver.append("01.qc/short_read_r2_multiqc/multiqc_r2_raw-data_report.html")        
-    # short-read trim & clean result
-    data_deliver.append("01.qc/multiqc_short_read_trim/multiqc_short_read_trim_report.html")
-    # merge qc
-    data_deliver.append("01.qc/multiqc_merge_qc/multiqc_merge_qc_report.html")
-    # mapping
-    data_deliver.extend(expand('02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',sample=samples.keys()))
-    data_deliver.extend(expand('02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',sample=samples.keys()))
-    data_deliver.extend(expand('02.mapping/preseq/{sample}.lc_extrap.txt',sample=samples.keys())),
-    data_deliver.extend(expand('02.mapping/preseq/{sample}.c_curve.txt',sample=samples.keys())),
-    data_deliver.extend(expand('02.mapping/filter_pe/{sample}.filter_pe.sorted.bam',sample=samples.keys())),
-    data_deliver.extend(expand('02.mapping/filter_pe/{sample}.filter_pe.sorted.bam.bai',sample=samples.keys())),
-    data_deliver.extend(expand('02.mapping/shifted/{sample}.shifted.sorted.bam',sample=samples.keys())),
-    data_deliver.extend(expand('02.mapping/shifted/{sample}.shifted.sorted.bam.bai',sample=samples.keys())),
-    data_deliver.extend(expand(f"02.mapping/bamCoverage/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw",
-                                          sample=samples.keys()))
-    data_deliver.extend(expand('02.mapping/computeMatrix/{sample}_TSS_matrix.gz',sample=samples.keys())),
-    data_deliver.extend(expand('02.mapping/plots/{sample}_TSS_enrichment.png',sample=samples.keys())),
-    data_deliver.append(expand('02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv',sample=samples.keys()))
-    data_deliver.append(expand('02.mapping/samtools_stats/{sample}_bam_stats.tsv',sample=samples.keys()))
-    # macs2
-    data_deliver.extend(expand('03.peak_calling/MACS2/{sample}/{sample}_peaks.narrowPeak',sample=samples.keys()))
-    data_deliver.extend(expand('03.peak_calling/MACS2/{sample}/{sample}_peaks.xls',sample=samples.keys()))
-    data_deliver.extend(expand('03.peak_calling/MACS2/{sample}/{sample}_summits.bed',sample=samples.keys()))
-    data_deliver.extend(expand('03.peak_calling/MACS2/{sample}/{sample}_treat_pileup.bdg',sample=samples.keys()))
-    # HOMER
-    data_deliver.append(expand("03.peak_calling/HOMER/{sample}_annotation.txt",sample=samples.keys()))
-    data_deliver.append(expand("03.peak_calling/HOMER/{sample}_stats.txt",sample=samples.keys()))
-    # count_matrix
-    data_deliver.append("04.consensus/consensus_counts_matrix.txt")
-    data_deliver.append("04.consensus/matrix_description.txt")
-    data_deliver.append("04.consensus/consensus_counts_matrix_ann.txt")
-    # ------------- merge group ---------------- #
-    if merge_group:
-        data_deliver.extend(expand("02.mapping/merged/{group}.merged.bam",group = groups.keys()))
-        data_deliver.extend(expand("02.mapping/merged/{group}.merged.bam.bai",group = groups.keys()))
-        data_deliver.extend(expand("03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.narrowPeak",group = groups.keys()))
-        data_deliver.extend(expand("03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.xls",group = groups.keys()))
-        data_deliver.extend(expand("03.peak_calling/MERGE_MACS2/{group}/{group}_summits.bed",group = groups.keys()))
-        data_deliver.extend(expand("03.peak_calling/MERGE_MACS2/{group}/{group}_treat_pileup.bdg",group = groups.keys()))
-        data_deliver.extend(expand("03.peak_calling/MERGE_HOMER/{group}_annotation.txt",group = groups.keys()))
-        data_deliver.extend(expand("03.peak_calling/MERGE_HOMER/{group}_stats.txt",group = groups.keys()))
-        data_deliver.append("04.consensus/merge_matrix_description.txt")
-        data_deliver.append("04.consensus/merge_consensus_counts_matrix.txt")
-        data_deliver.append("04.consensus/merge_consensus_counts_matrix_ann.txt")
-        data_deliver.append('05.ATAC_QC/multiqc_MACS2_Merge_report.html')
+
+    basic_modules = ['qc_clean', 'mapping', 'peak_calling', 'motif_analysis', 'consensus_peaks', 'atac_qc']
+    deep_qc_flags = ['bamCoverage']
+    downstream_modules = ['diff_peaks']
+
+    def execute_qc_clean(samples, data_deliver):
+        return qc_clean(samples, data_deliver)
+
+    def execute_mapping(samples, data_deliver):
+        return mapping(samples, data_deliver, config)
+
+    def execute_peak_calling(samples, data_deliver):
+        return peak_calling(samples, data_deliver)
+
+    def execute_motif_analysis(samples, data_deliver):
+        return motif_analysis(samples, data_deliver)
+
+    def execute_consensus_peaks(samples, data_deliver):
+        return consensus_peaks(samples, data_deliver)
+
+    def execute_diff_peaks(samples, data_deliver):
+        return diff_peaks(samples, data_deliver, merge_group)
+
+    def execute_atac_qc(samples, data_deliver):
+        return atac_qc(samples, data_deliver, merge_group)
+
+    def execute_merge_group_analysis(groups, data_deliver):
+        return merge_group_analysis(groups, data_deliver)
+
+    module_functions: Dict[str, Callable] = {
+        'qc_clean': execute_qc_clean,
+        'mapping': execute_mapping,
+        'peak_calling': execute_peak_calling,
+        'motif_analysis': execute_motif_analysis,
+        'consensus_peaks': execute_consensus_peaks,
+        'diff_peaks': execute_diff_peaks,
+        'atac_qc': execute_atac_qc
+    }
+
+    global _qc_warning_logged
+
+    for module in basic_modules:
+        if config.get(module) is not False:
+            config[module] = True
+
+    for flag in deep_qc_flags:
+        if config.get(flag) is not False:
+            config[flag] = True
+
+    if config.get('only_qc'):
+        if not _qc_warning_logged:
+            logger.warning('**********************************************************************')
+            logger.warning('   [MODE] ONLY QC ENABLED                                            ')
+            logger.warning('   - Running: Raw QC, Mapping, Peak Calling, Motif Analysis, QC      ')
+            logger.warning('   - Skipping: Differential Peak Analysis                              ')
+            logger.warning('**********************************************************************')
+            time.sleep(1)
+            _qc_warning_logged = True
+            
+        for module in downstream_modules:
+            config[module] = False
+            
     else:
-        data_deliver.append('05.ATAC_QC/multiqc_MACS2_Samples_report.html')
+        for module in downstream_modules:
+            if config.get(module) is not False:
+                config[module] = True
+
+    for module, func in module_functions.items():
+        if config.get(module):
+            if module == "mapping":
+                data_deliver = func(samples, data_deliver, config)
+            else:
+                data_deliver = func(samples, data_deliver)
+
+    if merge_group:
+        data_deliver = execute_merge_group_analysis(groups, data_deliver)
+
+    if config.get('print_target'):
+        rich_print("[bold green]Generated Target Files:[/bold green]")
+        rich_print(data_deliver)
         
-    # deg
-    if merge_group:
-        data_deliver.append('06.deg_enrich/DEG_merge/Global_PCA.pdf')
-        data_deliver.append('06.deg_enrich/DEG_merge/All_Contrast_Differential_Peaks_Statistics.csv')
-        data_deliver.append('06.deg_enrich/merge_enrich/')
+    return data_deliver
+
+
+def ReportData(config: dict = None) -> List[str]:
+    """
+    Collects all files required for generating the final Quarto ATAC-seq analysis report.
+    """
+    if config.get('report'):
+        return [
+                os.path.join(config['data_deliver'],'delivery_manifest.json'),
+                os.path.join(config['data_deliver'],'delivery_manifest.md5'),
+                os.path.join(config['data_deliver'],'delivery_details.log'),
+                os.path.join(config['data_deliver'],'report_data/project_summary.json'),
+                os.path.join(config['data_deliver'],'report_data','delivery_manifest.json'),
+                os.path.join(config['data_deliver'],'report_data','delivery_manifest.md5'),
+                os.path.join(config['data_deliver'],'report_data','delivery_details.log'),
+                os.path.join(config['data_deliver'], "Analysis_Report/index.html")
+                ]
     else:
-        data_deliver.append('06.deg_enrich/DEG/Global_PCA.pdf')
-        data_deliver.append('06.deg_enrich/DEG/All_Contrast_Differential_Peaks_Statistics.csv')
-        data_deliver.append('06.deg_enrich/enrich/')
-
-    
-    # ATAC Report
-    data_deliver.append('05.ATAC_QC/multiqc_ATAC_report.html')
-
-    if config['print_target']:
-       rich_print(data_deliver)
-    return  data_deliver
+        return []
 
 def get_sample_data_dir(sample_id: str = None, config: dict = None) -> str:
     """

@@ -1,9 +1,49 @@
 #!/usr/bin/snakemake
 # -*- coding: utf-8 -*-
+"""
+ATACFlow Pipeline - Group-level Peak Calling Module
+
+This module handles the merging of BAM files by experimental group and performs
+group-level peak calling to identify consensus accessible chromatin regions across
+biological replicates. Group-level analysis provides more robust peak calls by
+increasing sequencing depth and reducing technical noise.
+
+Key Components:
+- merge_shifted_bams: Merges shifted ATAC-seq BAM files by experimental group
+- macs2_merge_callpeak: Performs MACS2 peak calling on merged group BAMs
+- merge_homer_annotate_peaks: Annotates group-level peaks using HOMER
+- merge_create_consensus_peakset: Creates consensus peaks from group-level calls
+- merge_homer_annotate_consensus_peaks: Annotates group consensus peaks
+- merge_generate_count_matrix: Generates count matrix using group consensus peaks
+- merge_generate_count_matrix_ann: Adds gene annotation to group count matrix
+
+This module is particularly useful for experimental designs with multiple biological
+replicates, where group-level analysis can reveal more consistent and robust
+accessible chromatin regions that may be missed in individual sample analysis.
+"""
+
 import os
+
 rule merge_shifted_bams:
     """
-    根据分组信息 (GROUPS 字典) 合并对应的 Shifted BAM 文件
+    Merge shifted ATAC-seq BAM files by experimental group.
+
+    This rule combines the shifted BAM files from all samples belonging to the same
+    experimental group, creating a single consolidated BAM file with increased
+    sequencing depth. Merging biological replicates prior to peak calling improves
+    the sensitivity and robustness of peak detection by reducing technical noise
+    and increasing coverage of accessible chromatin regions.
+
+    Key features of this merging process:
+    - Uses samtools merge for efficient BAM combination
+    - Maintains proper pairing information for paired-end reads
+    - Creates an index for the merged BAM file for rapid access
+    - Preserves all quality information and alignment tags
+
+    The merged BAM file serves as input for group-level peak calling, which can
+    identify accessible regions that may be too weak to detect in individual samples
+    but become apparent when replicates are combined. This approach is particularly
+    valuable for experiments with limited sequencing depth per sample.
     """
     input:
         lambda wildcards: expand(
@@ -28,8 +68,35 @@ rule merge_shifted_bams:
 
 rule macs2_merge_callpeak:
     """
-    Call peaks using MACS2 on the shifted BAM file.
-    Note: Since the BAM is already shifted, we use BAMPE mode without additional shift parameters.
+    Identify open chromatin regions (peaks) using MACS2 on merged group BAM files.
+
+    This rule performs peak calling on the merged BAM files from each experimental group,
+    leveraging the increased sequencing depth to identify more robust and sensitive
+    accessible chromatin regions. MACS2 is used with parameters optimized for ATAC-seq
+    data to detect regions of open chromatin where Tn5 transposase insertion is
+    significantly enriched relative to background.
+
+    Key parameters for group-level ATAC-seq peak calling:
+    - -f BAMPE: Uses paired-end information directly for improved peak modeling
+    - -g {genome_size}: Specifies effective genome size for proper p-value calculation
+    - -q {qvalue}: Sets q-value threshold for statistical significance (FDR control)
+    - --keep-dup all: Retains all duplicates (already marked and filtered in prior steps)
+    - -B --SPMR: Generates bedGraph files normalized by reads per million mapped reads
+
+    Since the input BAM files have already been shifted to correct for Tn5 transposase bias,
+    no additional shifting parameters are required in MACS2. The BAMPE mode leverages
+    the paired-end nature of ATAC-seq data to build a more accurate model of fragment
+    size distribution and peak shape.
+
+    Group-level peak calling generates several important output files:
+    - _peaks.narrowPeak: Standard narrowPeak format with peak coordinates and statistics
+    - _peaks.xls: Detailed peak information in Excel-compatible format
+    - _summits.bed: Precise summit coordinates for each peak (single base resolution)
+    - _treat_pileup.bdg: Normalized read coverage signal track in bedGraph format
+
+    These group-level peak calls represent the consensus accessible chromatin landscape
+    of each experimental condition and serve as the foundation for downstream analyses
+    including differential accessibility analysis between groups.
     """
     input:
         bam = "02.mapping/merged/{group}.merged.bam",
@@ -70,7 +137,27 @@ rule macs2_merge_callpeak:
 
 rule merge_homer_annotate_peaks:
     """
-    Annotate peaks relative to gene features using HOMER.
+    Annotate group-level peaks relative to gene features using HOMER.
+
+    This rule annotates the consensus peaks identified from merged group BAM files
+    with respect to known gene structures, providing functional context to the
+    accessible chromatin regions. HOMER (Hypergeometric Optimization of Motif
+    EnRichment) is used to determine the genomic context of each peak, including
+    its distance to the nearest transcription start site (TSS) and the gene it
+    potentially regulates.
+
+    Key annotation information provided includes:
+    - Peak location relative to gene features (promoter, exon, intron, intergenic)
+    - Distance to the nearest transcription start site (TSS)
+    - Nearest gene identifier and name
+    - Peak statistics and enrichment metrics
+    - Summary statistics of peak distribution across genomic features
+
+    This annotation is crucial for interpreting the biological significance of
+    accessible chromatin regions, as it links peaks to potential target genes and
+    provides insights into the regulatory landscape of the genome under different
+    experimental conditions. The annotated peaks facilitate downstream analyses
+    such as gene ontology enrichment and pathway analysis of potential regulatory regions.
     """
     input:
         peak = "03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.narrowPeak",
@@ -101,9 +188,24 @@ rule merge_homer_annotate_peaks:
 
 rule merge_create_consensus_peakset:
     """
-    【修改点】
-    Merge peaks from GROUP merged results (instead of individual samples).
-    This creates a more robust consensus set.
+    Create a consensus peakset by merging peaks from group-level MACS2 results.
+
+    This rule generates a unified set of consensus accessible chromatin regions by
+    merging peaks from all experimental groups, rather than from individual samples.
+    This approach creates a more robust consensus set that captures the complete
+    regulatory landscape across all experimental conditions in the study.
+
+    Key features of this group-based consensus approach:
+    - Merges peaks from group-level calls rather than individual samples
+    - Uses strict sorting and overlap-based merging to create non-overlapping regions
+    - Maintains the genomic coordinates of all accessible regions across conditions
+    - Provides a comprehensive reference for differential accessibility analysis
+
+    By using group-level peaks as input, this approach reduces noise from individual
+    sample variation and focuses on the consistent accessible regions within each
+    experimental condition. The resulting consensus peakset serves as a common
+    coordinate system for quantifying accessibility across all samples and groups,
+    enabling robust statistical comparisons between different experimental conditions.
     """
     input:
         peaks = expand("03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.narrowPeak", group=groups.keys())
@@ -127,7 +229,24 @@ rule merge_create_consensus_peakset:
 
 rule merge_homer_annotate_consensus_peaks:
     """
-    Annotate peaks relative to gene features using HOMER.
+    Annotate the group-level consensus peaks relative to gene features using HOMER.
+
+    This rule provides functional annotation for the consensus peakset derived from
+    merging group-level peaks, linking accessible chromatin regions to potential
+    target genes and regulatory elements. The annotation process uses HOMER to
+    determine the genomic context of each consensus peak and its relationship to
+    known gene structures.
+
+    Key annotation information for consensus peaks includes:
+    - Genomic feature classification (promoter, exon, intron, intergenic)
+    - Distance to nearest transcription start site (TSS)
+    - Nearest gene identifiers and functional information
+    - Summary statistics of peak distribution across the genome
+
+    Annotating the consensus peakset ensures that all regions used for differential
+    accessibility analysis have consistent functional annotation, facilitating the
+    interpretation of changes in chromatin accessibility between experimental conditions
+    and enabling downstream functional enrichment analyses.
     """
     input:
         consensus = "04.consensus/group_consensus_peaks.bed"
@@ -157,6 +276,27 @@ rule merge_homer_annotate_consensus_peaks:
         """
 
 rule merge_generate_count_matrix:
+    """
+    Generate a read count matrix for the group-level consensus peakset across all samples.
+
+    This rule quantifies chromatin accessibility by counting the number of sequencing
+    reads overlapping each region in the group-level consensus peakset for every
+    sample in the experiment. The resulting count matrix provides a quantitative
+    measure of accessibility for each peak across all experimental conditions,
+    serving as the foundation for differential accessibility analysis.
+
+    Key features of the count matrix generation:
+    - Uses the consensus peakset as a common coordinate system
+    - Counts reads in each shifted BAM file for every sample
+    - Maintains sample identity for downstream statistical comparisons
+    - Generates a matrix description file for documentation
+
+    The count matrix is structured with peaks as rows and samples as columns, with
+    each cell containing the number of reads from that sample overlapping that peak.
+    This format is compatible with popular differential accessibility tools like DESeq2
+    and edgeR, enabling robust statistical analysis of chromatin accessibility changes
+    between experimental conditions.
+    """
     input:
         consensus = "04.consensus/group_consensus_peaks.bed",
         bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
@@ -183,7 +323,28 @@ rule merge_generate_count_matrix:
             --desc {output.description} \
             --log {log}
         """
+
 rule merge_generate_count_matrix_ann:
+    """
+    Add gene annotation information to the group-level count matrix.
+
+    This rule combines the quantitative accessibility data from the count matrix with
+    the functional annotation from HOMER, creating an integrated matrix that includes
+    both accessibility measurements and gene context for each consensus peak. This
+    annotated matrix facilitates the interpretation of differential accessibility results
+    by immediately linking accessibility changes to potential target genes.
+
+    Key integration features:
+    - Merges peak coordinates with HOMER annotation data
+    - Preserves all count data for differential analysis
+    - Adds gene identifiers, names, and functional information
+    - Maintains genomic location and peak statistics
+
+    The resulting annotated count matrix serves as a comprehensive resource for both
+    computational analysis and biological interpretation, enabling researchers to
+    quickly connect changes in chromatin accessibility to potential gene regulatory
+    effects and functional pathways.
+    """
     input:
         annotation = "04.consensus/group_consensus_peaks_annotation.txt",
         counts_matrix = "04.consensus/merge_consensus_counts_matrix.txt",
