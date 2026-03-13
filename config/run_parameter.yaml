@@ -1,5 +1,7 @@
 # software parameter
 parameter:
+  # Aligner selection: choose between 'bowtie2' or 'chromap'
+  aligner: bowtie2
   threads:
     json_md5_verifier: 40   
     fastqc: 1
@@ -7,6 +9,7 @@ parameter:
     multiqc: 1
     fastq_screen: 10
     bowtie2: 16
+    chromap: 16
     samtools: 10
     bamCoverage: 10
     bedtools: 10

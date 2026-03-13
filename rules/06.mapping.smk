@@ -33,78 +33,23 @@ def get_organelle_names(wildcards):
     # Return as space-separated string for easier shell processing
     return " ".join(org_list) if org_list else ""
 
-rule Bowtie2_mapping:
-    """
-    Align paired-end ATAC-seq reads to the reference genome using Bowtie2.
-
-    This rule performs the critical step of mapping cleaned ATAC-seq reads to the
-    reference genome using Bowtie2, a fast and memory-efficient aligner optimized
-    for short reads. Proper alignment is essential for all downstream ATAC-seq
-    analyses including peak calling and transcription factor footprinting.
-
-    Bowtie2 is configured with parameters specifically optimized for ATAC-seq:
-    - --very-sensitive: Enables high sensitivity alignment for better mapping rates
-    - -X 2000: Sets maximum fragment length to 2000bp to accommodate nucleosome-free
-                regions and mono-/di-nucleosome fragments typical in ATAC-seq
-    - --no-mixed: Disables unpaired alignments, ensuring only proper pairs are considered
-    - --no-discordant: Excludes discordant read pairs from alignment results
-
-    The alignment process uses the cleaned, adapter-trimmed reads from the previous
-    step and generates an unsorted BAM file as output. This BAM file serves as input
-    for subsequent processing steps including coordinate sorting, duplicate marking,
-    and quality filtering.
-
-    For ATAC-seq experiments, accurate alignment is crucial because:
-    - It determines the genomic location of Tn5 transposase insertions
-    - Mapping quality directly impacts peak calling sensitivity and specificity
-    - Proper alignment is required for nucleosome positioning analysis
-    - It enables identification of accessible chromatin regions
-
-    The resulting alignments undergo extensive quality control and filtering in
-    subsequent rules to ensure only high-quality, properly paired reads are used
-    for downstream analysis.
-    """
-    input:
-        r1 = "01.qc/short_read_trim/{sample}.R1.trimed.fq.gz",
-        r2 = "01.qc/short_read_trim/{sample}.R2.trimed.fq.gz",
-    output:
-        bam = temp('02.mapping/Bowtie2/{sample}/{sample}.bam'),
-    resources:
-        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
-    conda:
-        workflow.source_path("../envs/bowtie2.yaml"),
-    log:
-        "logs/02.mapping/Bowtie2_{sample}.log",
-    message:
-        "Running Bowtie2 mapping on {wildcards.sample} R1 and R2",
-    benchmark:
-        "benchmarks/{sample}_Bowtie2_benchmark.txt",
-    params:
-        index = config['Bowtie2_index'][config['Genome_Version']]['index'],
-    threads:
-        config['parameter']['threads']['bowtie2'],
-    shell:
-        """
-        ( ulimit -n 65535 && bowtie2 \
-                -p {threads} \
-                -X 2000 \
-                --very-sensitive \
-                --no-mixed \
-                --no-discordant \
-                -x {params.index} \
-                -1 {input.r1} \
-                -2 {input.r2} | samtools view -bS - > {output.bam} ) &> {log}
-        """
-
+# --------------- Mapping Rules --------------- #
+if config.get("mapping_tools","chromap") == "chromap":
+    include: "./subrules/mapping/chromap.smk"
+    logger.info("ATAC mapping powered by Chromap") 
+else:
+    include: "./subrules/mapping/bowtie2.smk"
+    logger.info("ATAC mapping powered by bowtie2") 
+# --------------- Mapping Rules --------------- #
 rule sam_to_sorted_bam:
     """
     Convert SAM to sorted BAM and create index
     """
     input:
-        bam = '02.mapping/Bowtie2/{sample}/{sample}.bam',
+        bam = '02.mapping/Aligner/{sample}/{sample}.bam',
     output:
-        sort_bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
-        sort_bam_bai = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',
+        sort_bam = temp('02.mapping/Aligner/{sample}/{sample}.sorted.bam'),
+        sort_bam_bai = temp('02.mapping/Aligner/{sample}/{sample}.sorted.bam.bai'),
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
@@ -123,13 +68,49 @@ rule sam_to_sorted_bam:
         samtools index -@ {threads} {output.sort_bam} ) &>{log}
         """
 
+rule bam2cram:
+    """
+    Convert BAM files to CRAM format for storage efficiency.
+
+    This rule compresses the sorted BAM files into CRAM format, which typically
+    achieves 40-60% smaller file sizes compared to BAM while maintaining full
+    compatibility with most bioinformatics tools. The CRAM format uses reference-
+    based compression, making it ideal for large-scale RNA-seq projects where
+    storage costs are a concern.
+    """
+    input:
+        sort_bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
+        sort_bam_bai = '02.mapping/Aligner/{sample}/{sample}.sorted.bam.bai',
+    output:
+        cram = '02.mapping/cram/{sample}.cram',
+        cram_index = '02.mapping/cram/{sample}.cram.crai',
+    resources:
+        **rule_resource(config, 'medium_resource',  skip_queue_on_local=True,logger = logger),
+    conda:
+        workflow.source_path("../envs/bwa2.yaml"),
+    message:
+        "Running bam compress of BAM : {input.bam}",
+    log:
+        "logs/02.mapping/bam_dup_stats_{sample}.log",
+    benchmark:
+        "benchmarks/{sample}_Dup_bam_stats_benchmark.txt",
+    threads:
+        config['parameter']['threads']['bam2cram'],
+    params:
+        reference = config['STAR_index'][config['Genome_Version']]['genome_fa'],
+    shell:
+        """
+        samtools view -@ {threads} -C -T {params.reference} -o {output.cram} {input.sort_bam}
+        samtools index  -@ {threads} {output.cram}
+        """
+
 rule estimate_library_complexity:
     """
     Estimate library complexity using Preseq
     """
     input:
-        sort_bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
-        sort_bai = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',
+        sort_bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
+        sort_bai = '02.mapping/Aligner/{sample}/{sample}.sorted.bam.bai',
     output:
         preseq = '02.mapping/preseq/{sample}.lc_extrap.txt',
         c_curve = '02.mapping/preseq/{sample}.c_curve.txt',
@@ -144,7 +125,7 @@ rule estimate_library_complexity:
     benchmark:
         "benchmarks/{sample}_preseq_benchmark.txt",
     threads:
-        1
+        1,
     shell:
         """
         exec 2> {log}
@@ -155,8 +136,8 @@ rule estimate_library_complexity:
 
 rule samtools_flagst:
     input:
-        bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
-        bai = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',
+        bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
+        bai = '02.mapping/Aligner/{sample}/{sample}.sorted.bam.bai',
     output:
         samtools_flagstat = '02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv',
     resources:
@@ -179,10 +160,11 @@ rule samtools_flagst:
                  {input.bam} > {output.samtools_flagstat} 2>{log}
         """
 
+
 rule samtools_stats:
     input:
-        bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
-        bai = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',
+        bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
+        bai = '02.mapping/Aligner/{sample}/{sample}.sorted.bam.bai',
     output:
         samtools_stats = '02.mapping/samtools_stats/{sample}_bam_stats.tsv',
     resources:
@@ -213,8 +195,8 @@ rule add_read_groups:
     Add read groups to BAM file using GATK
     """
     input:
-        bam = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam',
-        sort_bai = '02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai',
+        bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
+        sort_bai = '02.mapping/Aligner/{sample}/{sample}.sorted.bam.bai',
     output:
         bam = temp('02.mapping/gatk/{sample}/{sample}.rg.bam'),
     conda:
@@ -239,6 +221,7 @@ rule add_read_groups:
              -SM {wildcards.sample} \
              --CREATE_INDEX true 2> {log}
         """
+
 
 rule mark_duplicates:
     """
@@ -376,6 +359,7 @@ rule filter_proper_pairs:
         samtools sort -@ {threads} {output.bam} -o {output.sort_bam} && \
         samtools index -@ {threads} {output.sort_bam} ) > {log} 2>&1
         """
+
 
 rule atac_seq_shift:
     """

@@ -55,11 +55,11 @@ def mapping(
         config = {}
 
     data_deliver.extend(
-        expand("02.mapping/Bowtie2/{sample}/{sample}.sorted.bam", sample=samples.keys())
+        expand("02.mapping/cram/{sample}.cram", sample=samples.keys())
     )
     data_deliver.extend(
         expand(
-            "02.mapping/Bowtie2/{sample}/{sample}.sorted.bam.bai", sample=samples.keys()
+            "02.mapping/cram/{sample}.cram.crai", sample=samples.keys()
         )
     )
     data_deliver.extend(

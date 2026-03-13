@@ -12,6 +12,7 @@ can_use_genome_version:
 Bowtie2_index:
     Lsat_Salinas_v11:
       index: Lactuca_sativa_V11_ncbi/Lsat_Salinas_v11_index/Lsat_Salinas_v11
+      chromap_index: Lactuca_sativa_V11_ncbi/Lsat_Salinas_v11_index/Lsat_Salinas_v11
       gene_gtf: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.fix_id_gene.gtf
       genome_fa: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.fix_id.fna
       genome_gtf: Lactuca_sativa_V11_ncbi/GCF_002870075.4_Lsat_Salinas_v11_genomic.fix_id.gtf
@@ -23,6 +24,7 @@ Bowtie2_index:
       ploidy: 2
     hg38:
       index: hg38/GRCh38.p14_bowtie2/GRCh38.p14_index
+      chromap_index:
       gene_gtf: hg38/gencode.v49.annotation.gene.gtf
       genome_fa: hg38/GRCh38.p14.genome.fa
       genome_gtf: hg38/gencode.v49.annotation.gtf
