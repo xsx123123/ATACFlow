@@ -1,23 +1,22 @@
 #!/usr/bin/snakemake
 # -*- coding: utf-8 -*-
 """
-ATACFlow Pipeline - Data Delivery and Organization Module
+ATACFlow Pipeline - Results Delivery and Reporting Module
 
-This module handles the final organization, packaging, and delivery of ATAC-seq
-analysis results using a Rust-accelerated delivery tool. It ensures that all
-analysis outputs are properly organized, documented, and transferred to the
-final delivery directory in a structured and reproducible manner.
+This module handles the final stage of the ATAC-seq analysis pipeline, focusing on
+organizing, packaging, and delivering analysis results to users. It coordinates
+the generation of comprehensive reports, data summaries, and structured output
+that enables researchers to understand their results and access their data easily.
 
 Key Components:
-- delivery: Organizes and transfers all analysis results to the final delivery directory
-- delivery_report: Prepares a subset of results specifically for report generation
+- run_data_deliver: Orchestrates the delivery of processed data and results
+- generate_report: Creates comprehensive analysis reports with visualizations
+- generate_summary: Produces project-level summary statistics and documentation
 
-This module ensures that all analysis outputs are properly packaged for delivery,
-including comprehensive manifest files, MD5 checksums for data integrity, and
-detailed logs documenting the delivery process. This is essential for ensuring
-reproducibility and providing clear documentation of all analysis results.
+This module serves as the final quality checkpoint and delivery mechanism,
+ensuring that all analysis results are properly organized, documented, and
+accessible for downstream interpretation and publication.
 """
-
 import os
 import pandas as pd
 

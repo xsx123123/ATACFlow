@@ -142,7 +142,32 @@ rule short_read_fastq_screen_r1:
 
 rule short_read_fastq_screen_r2:
     """
-    Check contamination in R2 reads using fastq_screen
+    Screen R2 (reverse) reads for contamination using FastQ Screen.
+
+    This rule performs comprehensive contamination detection on the reverse reads
+    by aligning a subset of reads against a panel of reference genomes that represent
+    common sources of contamination in sequencing experiments. FastQ Screen provides
+    valuable insights into the purity of the sequencing library by identifying
+    reads that map to unexpected reference genomes.
+
+    The contamination screening panel typically includes:
+    - The target reference genome (expected primary mapping)
+    - Common model organisms (potential cross-sample contamination)
+    - Microbial genomes (bacterial, fungal, viral contamination)
+    - Organellar genomes (mitochondrial, chloroplast for plants)
+    - Common laboratory contaminants (e.g., E. coli, yeast)
+
+    This analysis generates a detailed text report showing the percentage of reads
+    mapping to each reference database, multi-mapping reads, and unmapped reads.
+    The results help identify:
+    - Significant contamination from unexpected sources
+    - Sample mix-ups or cross-contamination
+    - Library preparation artifacts
+    - Potential issues with sample collection or processing
+
+    For ATAC-seq experiments, this is particularly important for detecting organellar
+    contamination (chloroplast/mitochondria in plants) which can be substantial and
+    requires special handling in downstream filtering steps.
     """
     input:
         md5_check = "01.qc/md5_check.tsv",

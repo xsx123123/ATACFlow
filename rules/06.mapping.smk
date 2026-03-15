@@ -43,7 +43,20 @@ else:
 # --------------- Mapping Rules --------------- #
 rule sorted_bam:
     """
-    Convert SAM to sorted BAM and create index
+    Convert SAM to sorted BAM format and create index for efficient access.
+
+    This rule converts the SAM format output from the aligner to the compressed BAM format,
+    which is the standard binary format for storing aligned sequencing data. The BAM file
+    is coordinate-sorted to enable efficient random access by genomic position, and an
+    index is generated to support rapid data retrieval for downstream analysis tools.
+
+    Key processing steps:
+    - Convert SAM to BAM format using samtools (compression reduces file size)
+    - Sort BAM by chromosomal coordinates for indexed access
+    - Generate BAM index (.bai) for fast random access to genomic regions
+
+    The sorted BAM and its index serve as the foundation for downstream analyses
+    including peak calling, coverage visualization, and quality assessment.
     """
     input:
         bam = '02.mapping/Aligner/{sample}/{sample}.bam',
@@ -106,7 +119,23 @@ rule bam2cram:
 
 rule estimate_library_complexity:
     """
-    Estimate library complexity using Preseq
+    Estimate library complexity and predict sequencing depth using Preseq.
+
+    This rule analyzes the complexity of the sequencing library by estimating the
+    number of unique molecules present and predicting how many additional unique
+    reads could be obtained with increased sequencing depth. Library complexity
+    is a critical quality metric that indicates whether the library was sufficiently
+    complex or if PCR amplification bias has reduced diversity.
+
+    Key analyses performed:
+    - lc_extrap: Extrapolates the complexity curve to predict unique read yield
+    - c_curve: Generates the complexity curve showing observed vs. expected unique reads
+
+    High complexity libraries show a curve that plateaus slowly, indicating that
+    additional sequencing would yield many new unique reads. Low complexity libraries
+    show rapid saturation, suggesting PCR duplicates dominate and deeper sequencing
+    would be inefficient. This information guides decisions about whether additional
+    sequencing would be beneficial for the experiment.
     """
     input:
         sort_bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
@@ -136,7 +165,25 @@ rule estimate_library_complexity:
 
 rule samtools_flagst:
     """
-    Generate flag statistics for BAM files using samtools flagstat
+    Generate flag statistics for BAM files using samtools flagstat.
+
+    This rule produces comprehensive statistics about the alignment flags in the BAM file,
+    providing a breakdown of how reads are categorized based on their SAM flag values.
+    Flagstat reports essential quality metrics that help assess the success of the
+    alignment step and identify potential issues with the sequencing data.
+
+    Key statistics reported include:
+    - Total number of reads in the BAM file
+    - Number of reads mapped to the reference genome
+    - Properly paired reads (reads mapped in correct orientation and distance)
+    - Reads mapped as singletons (only one end of pair mapped)
+    - Reads mapped to different chromosomes or with unexpected orientations
+    - Duplicate reads and supplementary alignments
+
+    These metrics are crucial for quality control, enabling the identification of
+    alignment problems such as high unmapped rates, poor pairing efficiency, or
+    contamination with adapter dimers. The tab-separated format facilitates downstream
+    parsing and integration into quality control reports.
     """
     input:
         bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
@@ -166,7 +213,30 @@ rule samtools_flagst:
 
 rule samtools_stats:
     """
-    Generate comprehensive statistics for BAM files using samtools stats
+    Generate comprehensive statistics for BAM files using samtools stats.
+
+    This rule produces detailed statistical summaries of the BAM file, including
+    alignment quality metrics, coverage statistics, insert size distributions,
+    and base composition analyses. The samtools stats tool provides comprehensive
+    quality control data that helps assess the overall success of the sequencing
+    experiment and identify potential technical issues.
+
+    Key statistics and metrics reported include:
+    - Summary statistics: total reads, mapped reads, duplicate rates
+    - Quality metrics: average base quality scores, quality distributions
+    - Insert size statistics: mean, median, and standard deviation of fragment lengths
+    - Coverage statistics: mean coverage, coverage histograms
+    - Base composition: nucleotide frequencies and GC content
+    - Read length distributions and mapping quality scores
+    - Chromosome-specific statistics and coverage summaries
+
+    The reference genome is used to calculate coverage statistics and evaluate
+    the quality of alignments against the expected genomic sequence. This detailed
+    statistical report is essential for quality control, enabling the assessment
+    of library quality, sequencing depth, and the identification of any technical
+    artifacts that might affect downstream analyses. The tab-separated output format
+    facilitates easy parsing and integration into quality control summaries and
+    multi-sample comparison reports.
     """
     input:
         bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
@@ -198,7 +268,31 @@ rule samtools_stats:
 
 rule add_read_groups:
     """
-    Add read groups to BAM file using GATK
+    Add read groups to BAM file using GATK AddOrReplaceReadGroups.
+
+    This rule assigns read group information to each alignment in the BAM file,
+    which is essential for downstream GATK tools and other analysis pipelines that
+    require read group metadata. Read groups allow tracking of sequencing data
+    from different libraries, lanes, or flow cells, enabling proper handling of
+    technical artifacts and batch effects.
+
+    Key read group fields assigned:
+    - ID: Read group identifier (set to "1" for single sample processing)
+    - LB: Library identifier (set to "lib1" for tracking library preparation)
+    - PL: Platform/technology used (set to "illumina" for Illumina sequencing)
+    - PU: Platform unit/flow cell barcode and lane (set to "unit1")
+    - SM: Sample name (derived from wildcards.sample for sample tracking)
+
+    The read group information is crucial for:
+    - Distinguishing reads from different sequencing runs or lanes
+    - Identifying and correcting batch effects in downstream analyses
+    - Enabling duplicate marking algorithms to work correctly across read groups
+    - Facilitating variant calling and other analyses that require read group awareness
+
+    The output BAM file maintains all original alignment information while adding
+    the structured read group metadata required by GATK and other analysis tools.
+    The coordinate sorting and indexing ensure compatibility with downstream
+    processing steps including duplicate marking and variant analysis.
     """
     input:
         bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
@@ -231,7 +325,38 @@ rule add_read_groups:
 
 rule mark_duplicates:
     """
-    Mark PCR duplicates using GATK MarkDuplicates
+    Mark PCR duplicates using GATK MarkDuplicates and configure aligner-specific duplicate handling.
+
+    This rule identifies and marks PCR duplicates in the BAM file, which are reads that
+    originate from the same DNA fragment due to PCR amplification during library preparation.
+    Duplicate marking is essential for accurate downstream analyses as PCR duplicates can
+    skew coverage estimates, affect variant calling, and introduce bias in peak detection
+    for ATAC-seq experiments.
+
+    For aligner-specific duplicate handling:
+    - When using Chromap as the aligner, this rule skips GATK MarkDuplicates because
+      Chromap performs duplicate marking internally during the alignment process.
+      The rule creates symbolic links to the input BAM file and generates a metrics
+      file indicating that deduplication was handled by Chromap.
+    - When using Bowtie2 or other aligners, this rule runs GATK MarkDuplicates
+      to identify and mark duplicate reads based on alignment coordinates and
+      read sequences.
+
+    Key MarkDuplicates parameters:
+    - CREATE_INDEX: Generates index for the output BAM file for rapid access
+    - MAX_RECORDS_IN_RAM: Sets memory buffer size for sorting (5 million records)
+    - SORTING_COLLECTION_SIZE_RATIO: Controls temporary file usage during sorting
+
+    The duplicate marking process examines read pairs to identify those with
+    identical alignment coordinates, which likely represent PCR duplicates of
+    the same original DNA fragment. One read from each duplicate set is
+    retained as the primary alignment, while others are marked with the
+    DUPLICATE flag for downstream filtering.
+
+    The metrics file generated by MarkDuplicates provides statistics about
+    duplication rates, library complexity, and optical duplicates, which
+    are valuable quality control metrics for assessing library preparation
+    success and determining whether additional sequencing would be beneficial.
     """
     input:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.bam',
@@ -357,7 +482,28 @@ rule filter_blacklist_and_mito:
 
 rule filter_proper_pairs:
     """
-    Filter for properly paired reads and sort by name then by position
+    Filter for properly paired reads and sort by name then by position.
+
+    This rule processes the filtered BAM files to retain only properly paired reads
+    and performs coordinate-based sorting to prepare the data for downstream analyses.
+    Properly paired reads are those where both ends of the DNA fragment map to the
+    reference genome in the expected orientation and within a reasonable distance
+    from each other.
+
+    Key processing steps:
+    - Sort the input BAM file by read name to group paired reads together
+    - Filter for properly paired reads using specialized filtering tools
+    - Sort the resulting BAM file by genomic coordinates for downstream compatibility
+    - Generate index files for rapid random access to genomic regions
+
+    This filtering step is critical for ATAC-seq analysis as it ensures that only
+    high-quality, properly paired fragments are used for peak calling and other
+    downstream analyses. Removing improperly paired reads improves the accuracy
+    of fragment length estimation, insertion site analysis, and peak detection.
+
+    The coordinate-sorted output is compatible with downstream tools that require
+    position-sorted input, such as peak callers, coverage analysis tools, and
+    visualization software.
     """
     input:
         bam = '02.mapping/filtered/{sample}.clean.bam',
