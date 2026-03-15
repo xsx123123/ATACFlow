@@ -13,6 +13,7 @@ parameter:
     samtools: 10
     bamCoverage: 10
     bedtools: 10
+    featurecounts: 16
     homer: 10
     rnaflow-cli: 8
     Report: 10

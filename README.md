@@ -282,10 +282,32 @@ ATACFlow遵循以下设计理念：
 
 为了进一步提升流程的稳健性和科学性，计划在后续版本中引入以下改进：
 
+### 已有计划
 1.  **IDR (Irreproducible Discovery Rate) 支持**: 引入 ENCODE 推荐的 IDR 框架，定量评估生物学重复之间的一致性，为 Peak 过滤提供更严谨的统计学依据。
 2.  **自动 Blacklist 过滤**: 针对常见物种（如人、小鼠、拟南芥等）集成 ENCODE Blacklist 自动过滤步骤，剔除已知的信号伪影区域。
 3.  **动态 QC 阈值预警**: 在 MultiQC 报告中集成基于 `ataqv` 指标（如 TSS Enrichment Score, Fragment Length Distribution）的自动判定系统，对低质量样本进行实时报警。
 4.  **调控网络增强**: 深化 TOBIAS 结果与 DEG 结果的关联分析，构建更精细的 TF-Target 基因调控网络。
+
+### 与 nf-core/atacseq 对比后的新增优化方向
+
+#### 🔴 高优先级
+1.  **差异可及性分析模块**: 集成 DESeq2/edgeR 进行组间差异可及性分析，包括 PCA 聚类、差异 peak 鉴定和可视化。
+2.  **容器化支持**: 增加 Docker/Singularity 容器支持，与 Conda 环境并存，提高流程的可重复性和跨平台部署能力。
+3.  **精细化 BAM 过滤策略**: 参考 nf-core 的详尽过滤策略，增加：
+    - 错配数限制（>4 mismatches）过滤
+    - soft-clipped reads 过滤
+    - 插入大小限制（>2kb）过滤
+    - 染色体间配对 reads 过滤
+    - FR 方向验证
+
+#### 🟡 中优先级
+4.  **IGV 会话文件自动生成**: 自动创建包含 bigWig  tracks、peaks 和差异位点的 IGV 会话文件，方便用户直接可视化。
+5.  **测试数据集与 CI/CD**: 添加完整的测试数据集和自动化测试流程，确保流程更新的稳健性。
+6.  **扩展比对工具选择**: 增加 BWA 和 STAR 作为可选比对工具，提供更多选择。
+
+#### 🟢 低优先级
+7.  **模块化重构**: 将常用分析步骤抽象为可复用模块，便于跨项目共享和维护。
+8.  **多工作流系统支持**: 评估 Nextflow 版本的可行性，与现有 Snakemake 版本并存。
 
 ## 🚀 使用方法
 

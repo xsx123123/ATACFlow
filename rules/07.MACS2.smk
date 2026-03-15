@@ -161,33 +161,98 @@ rule homer_annotate_consensus_peaks:
             -p {threads} > {output.annotation} 2> {log}
         """
 
-rule generate_count_matrix:
+# rule generate_count_matrix:
+#    input:
+#        consensus = "04.consensus/consensus_peaks.bed",
+#        bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
+#    output:
+#        counts_matrix = "04.consensus/consensus_counts_matrix.txt",
+#        description = "04.consensus/matrix_description.txt"
+#    conda:
+#        workflow.source_path("../envs/bedtools.yaml"),
+#    log:
+#        "logs/04.consensus/multicov.log"
+#    params:
+#        sample_names = list(samples.keys()),
+#        path = workflow.source_path(config['parameter']['generate_atac_matrix']['path'])
+#    threads: 
+#        config['parameter']['threads']['bedtools']
+#    shell:
+#        """
+#        chmod +x {params.path}
+#        python3 {params.path} \
+#            --bed {input.consensus} \
+#            --inputs {input.bams} \
+#            --samples {params.sample_names} \
+#            --output {output.counts_matrix} \
+#            --desc {output.description} \
+#            --log {log}
+#        """
+
+rule generate_count_matrix_by_featureCounts:
+    """
+    Generate a read count matrix using featureCounts for the consensus peakset across all samples.
+
+    This rule replaces bedtools multicov with featureCounts to correctly count paired-end 
+    ATAC-seq fragments. The -p flag ensures that the entire DNA fragment (insert size) 
+    between Read 1 and Read 2 is evaluated against the peak boundaries, which is 
+    the standard and most accurate quantification method for ATAC-seq.
+    """
     input:
         consensus = "04.consensus/consensus_peaks.bed",
         bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
     output:
         counts_matrix = "04.consensus/consensus_counts_matrix.txt",
-        description = "04.consensus/matrix_description.txt"
+        # 保留原有的 description 输出，防止 Snakemake 报错
+        description = "04.consensus/matrix_description.txt",
+        # 捕获 featureCounts 默认生成的比对统计报告
+        summary = "04.consensus/consensus_counts_matrix.txt.summary",
+        # 临时生成的 SAF 文件，用完自动删除
+        saf = temp("04.consensus/consensus_peaks.saf") 
     conda:
-        workflow.source_path("../envs/bedtools.yaml"),
+        workflow.source_path("../envs/subread.yaml"), # 确保你的环境中安装了 subread 包
     log:
-        "logs/04.consensus/multicov.log"
-    params:
-        sample_names = list(samples.keys()),
-        path = workflow.source_path(config['parameter']['generate_atac_matrix']['path'])
+        "logs/04.consensus/featureCounts.log"
+    benchmark:
+        "benchmarks/04.consensus/featureCounts.txt"
     threads: 
-        config['parameter']['threads']['bedtools']
+        config['parameter']['threads'].get('featurecounts', 16)
     shell:
         """
-        chmod +x {params.path}
-        python3 {params.path} \
-            --bed {input.consensus} \
-            --inputs {input.bams} \
-            --samples {params.sample_names} \
-            --output {output.counts_matrix} \
-            --desc {output.description} \
-            --log {log}
+        echo "1. Converting consensus BED to SAF format..." > {log}
+        # 使用 awk 快速将 BED 转换为 SAF (ID, Chr, Start, End, Strand)
+        awk 'BEGIN{{OFS="\\t"; print "GeneID\\tChr\\tStart\\tEnd\\tStrand"}} \
+            {{print $1":"$2"-"$3, $1, $2, $3, "+"}}' {input.consensus} > {output.saf}
+
+        echo "2. Running featureCounts for ATAC-seq PE fragments..." >> {log}
+        # 核心计数命令
+        # -p: 识别为双端测序并计算整个 fragment
+        # -B: 仅保留两端都比对上的 fragments
+        # -C: 过滤掉跨染色体的嵌合体噪音
+        featureCounts \
+            -p \
+            -B \
+            -C \
+            -T {threads} \
+            -F SAF \
+            -a {output.saf} \
+            -o {output.counts_matrix} \
+            {input.bams} >> {log} 2>&1
+            
+        echo "3. Cleaning up matrix header for downstream R compatibility..." >> {log}
+        # 裁掉列名中的 BAM 路径和后缀，只保留纯净的 Sample Name，防止下游合并报错
+        sed -i 's|02.mapping/shifted/||g; s|.shifted.sorted.bam||g' {output.counts_matrix}
+
+        echo "4. Generating description file..." >> {log}
+        # 用 Bash 原生命令生成轻量级的描述文件，满足原流程的 output 检查
+        echo "File Name: $(basename {output.counts_matrix})" > {output.description}
+        echo "Generated Date: $(date +'%Y-%m-%d %H:%M:%S')" >> {output.description}
+        echo "--------------------------------------------------" >> {output.description}
+        echo "Total Samples: $(echo "{input.bams}" | wc -w)" >> {output.description}
+        echo "Total Consensus Peaks: $(wc -l < {input.consensus})" >> {output.description}
         """
+
+
 
 rule generate_count_matrix_ann:
     input:

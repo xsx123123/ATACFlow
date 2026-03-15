@@ -41,7 +41,7 @@ else:
     include: "./subrules/mapping/bowtie2.smk"
     logger.info("ATAC mapping powered by bowtie2") 
 # --------------- Mapping Rules --------------- #
-rule sam_to_sorted_bam:
+rule sorted_bam:
     """
     Convert SAM to sorted BAM and create index
     """
@@ -75,7 +75,7 @@ rule bam2cram:
     This rule compresses the sorted BAM files into CRAM format, which typically
     achieves 40-60% smaller file sizes compared to BAM while maintaining full
     compatibility with most bioinformatics tools. The CRAM format uses reference-
-    based compression, making it ideal for large-scale RNA-seq projects where
+    based compression, making it ideal for large-scale ATAC-seq projects where
     storage costs are a concern.
     """
     input:
@@ -89,7 +89,7 @@ rule bam2cram:
     conda:
         workflow.source_path("../envs/bwa2.yaml"),
     message:
-        "Running bam compress of BAM : {input.bam}",
+        "Converting BAM to CRAM format : {input.sort_bam}",
     log:
         "logs/02.mapping/bam_dup_stats_{sample}.log",
     benchmark:
@@ -97,7 +97,7 @@ rule bam2cram:
     threads:
         config['parameter']['threads']['bam2cram'],
     params:
-        reference = config['STAR_index'][config['Genome_Version']]['genome_fa'],
+        reference = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
     shell:
         """
         samtools view -@ {threads} -C -T {params.reference} -o {output.cram} {input.sort_bam}
@@ -135,6 +135,9 @@ rule estimate_library_complexity:
         """
 
 rule samtools_flagst:
+    """
+    Generate flag statistics for BAM files using samtools flagstat
+    """
     input:
         bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
         bai = '02.mapping/Aligner/{sample}/{sample}.sorted.bam.bai',
@@ -145,7 +148,7 @@ rule samtools_flagst:
     conda:
         workflow.source_path("../envs/samtools.yaml"),
     message:
-        "Running flagst for MarkDuplicates of BAM : {input.bam}",
+        "Running samtools flagstat for BAM : {input.bam}",
     log:
         "logs/02.mapping/bam_dup_lagstat_{sample}.log",
     benchmark:
@@ -162,6 +165,9 @@ rule samtools_flagst:
 
 
 rule samtools_stats:
+    """
+    Generate comprehensive statistics for BAM files using samtools stats
+    """
     input:
         bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
         bai = '02.mapping/Aligner/{sample}/{sample}.sorted.bam.bai',
@@ -172,7 +178,7 @@ rule samtools_stats:
     conda:
         workflow.source_path("../envs/samtools.yaml"),
     message:
-        "Running stats for MarkDuplicates of BAM : {input.bam}",
+        "Running samtools stats for BAM : {input.bam}",
     log:
         "logs/02.mapping/bam_dup_stats_{sample}.log",
     benchmark:
@@ -242,19 +248,38 @@ rule mark_duplicates:
         "benchmarks/02.mapping/gatk/mark_dup_{sample}.txt"
     threads: 2
     params:
-        java_opts = get_java_opts
+        java_opts = get_java_opts,  
+        aligner = config.get("mapping_tools", "bowtie2"),
     shell:
         """
-        gatk --java-options "{params.java_opts}" MarkDuplicates \
-             -I {input.bam} \
-             -O {output.bam} \
-             -M {output.metrics} \
-             --CREATE_INDEX true \
-             --MAX_RECORDS_IN_RAM 5000000 \
-             --SORTING_COLLECTION_SIZE_RATIO 0.5 2> {log}
+        if [ "{params.aligner}" = "chromap" ]; then
+            echo "Using Chromap: Skipping GATK MarkDuplicates..." > {log}
+        
+            ln -sf $(readlink -f {input.bam}) {output.bam}
+            
+            echo "MarkDuplicates skipped. Deduplication was automatically done by Chromap." > {output.metrics}
+            
+            if [ -f "{input.bam}.bai" ]; then
+                ln -sf $(readlink -f {input.bam}.bai) {output.bam}.bai
+            elif [ -f "${{input.bam%.bam}.bai}" ]; then
+                ln -sf $(readlink -f ${{input.bam%.bam}.bai}) ${{output.bam%.bam}.bai}
+            fi
+        else
+            echo "Running GATK MarkDuplicates..." > {log}
+            gatk --java-options "{params.java_opts}" MarkDuplicates \
+                 -I {input.bam} \
+                 -O {output.bam} \
+                 -M {output.metrics} \
+                 --CREATE_INDEX true \
+                 --MAX_RECORDS_IN_RAM 5000000 \
+                 --SORTING_COLLECTION_SIZE_RATIO 0.5 2>> {log}
+        fi
         """
 
 rule filter_blacklist_and_mito:
+    """
+    Filter BAM files to remove blacklist regions, organellar reads, low mapping quality reads, and unwanted flags
+    """
     input:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam',
     output:
@@ -393,21 +418,33 @@ rule atac_seq_shift:
     """
     input:
         bam = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam',
+        bai = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam.bai' 
     output:
-        shifted_bam = '02.mapping/shifted/{sample}.shifted.bam',
+        shifted_bam = temp('02.mapping/shifted/{sample}.shifted.bam'),
         shifted_sort_bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',
         shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai'
     log:
         "logs/02.mapping/atac_seq_shift_{sample}.log"
     conda:
         workflow.source_path("../envs/deeptools.yaml")
+    params:
+        whether_shift = config.get("mapping_tools", "bowtie2") 
     threads:
         20
     shell:
         """
-        alignmentSieve -b {input.bam} -o {output.shifted_bam} --ATACshift -p {threads} 2>> {log} && \
-        samtools sort -@ {threads} {output.shifted_bam} -o {output.shifted_sort_bam} && \
-        samtools index {output.shifted_sort_bam}
+        # 使用 {{params.whether_shift}} 将 Snakemake 变量传给 Bash
+        if [ "{params.whether_shift}" = "chromap" ]; then
+            echo "Using Chromap: Skipping deepTools shift and creating symlinks..." > {log}
+            ln -sf $(readlink -f {input.bam}) {output.shifted_bam}
+            ln -sf $(readlink -f {input.bam}) {output.shifted_sort_bam}
+            ln -sf $(readlink -f {input.bai}) {output.shifted_sort_bam_bai}
+        else
+            echo "Running deepTools alignmentSieve for Tn5 shifting..." > {log}
+            alignmentSieve -b {input.bam} -o {output.shifted_bam} --ATACshift -p {threads} 2>> {log} && \
+            samtools sort -@ {threads} {output.shifted_bam} -o {output.shifted_sort_bam} && \
+            samtools index {output.shifted_sort_bam}
+        fi
         """
 
 rule generate_bigwig_coverage:

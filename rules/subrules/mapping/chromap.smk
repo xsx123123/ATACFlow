@@ -27,9 +27,10 @@ rule Chromap_mapping:
     input:
         r1 = "01.qc/short_read_trim/{sample}.R1.trimed.fq.gz",
         r2 = "01.qc/short_read_trim/{sample}.R2.trimed.fq.gz",
-        ref = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
     output:
+        sam = temp('02.mapping/Aligner/{sample}/{sample}.sam'),
         bam = temp('02.mapping/Aligner/{sample}/{sample}.bam'),
+        summary = temp('02.mapping/Aligner/{sample}/{sample}.summary'),
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
@@ -41,17 +42,25 @@ rule Chromap_mapping:
     benchmark:
         "benchmarks/{sample}_Chromap_benchmark.txt",
     params:
+        ref = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
         index = config['Bowtie2_index'][config['Genome_Version']]['chromap_index'],
     threads:
         config['parameter'].get('threads', {}).get('chromap', 8),
     shell:
         """
-        ( ulimit -n 65535 && \
+        ( 
+        # mapping atac-seq data by chromap
+        ulimit -n 65535 && \
           chromap \
             -t {threads} \
             --preset atac \
-            -r {input.ref} \
+            -x {params.index} \
+            -r {params.ref} \
             -1 {input.r1} \
             -2 {input.r2} \
-            -o {output.bam} ) &> {log}
+            --SAM \
+            --summary {output.summary} \
+            -o {output.sam} 
+        # convert sam to bam
+        samtools view -@ {threads} -bS {output.sam} > {output.bam} ) &> {log}
         """

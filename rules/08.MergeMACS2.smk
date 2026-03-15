@@ -275,53 +275,111 @@ rule merge_homer_annotate_consensus_peaks:
             -p {threads} > {output.annotation} 2> {log}
         """
 
-rule merge_generate_count_matrix:
+#rule merge_generate_count_matrix:
+#    """
+#    Generate a read count matrix for the group-level consensus peakset across all samples.
+#
+#    This rule quantifies chromatin accessibility by counting the number of sequencing
+#    reads overlapping each region in the group-level consensus peakset for every
+#    sample in the experiment. The resulting count matrix provides a quantitative
+#    measure of accessibility for each peak across all experimental conditions,
+#    serving as the foundation for differential accessibility analysis.
+#
+#    Key features of the count matrix generation:
+#    - Uses the consensus peakset as a common coordinate system
+#    - Counts reads in each shifted BAM file for every sample
+#    - Maintains sample identity for downstream statistical comparisons
+#    - Generates a matrix description file for documentation
+#
+#    The count matrix is structured with peaks as rows and samples as columns, with
+#    each cell containing the number of reads from that sample overlapping that peak.
+#    This format is compatible with popular differential accessibility tools like DESeq2
+#    and edgeR, enabling robust statistical analysis of chromatin accessibility changes
+#    between experimental conditions.
+#    """
+#    input:
+#        consensus = "04.consensus/group_consensus_peaks.bed",
+#        bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
+#    output:
+#        counts_matrix = "04.consensus/merge_consensus_counts_matrix.txt",
+#        description = "04.consensus/merge_matrix_description.txt"
+#    conda:
+#        workflow.source_path("../envs/bedtools.yaml"),
+#    log:
+#        "logs/04.consensus/multicov.log"
+#    params:
+#        sample_names = list(samples.keys()),
+#        path = workflow.source_path(config['parameter']['generate_atac_matrix']['path'])
+#    threads: 
+#        config['parameter']['threads']['bedtools']
+#    shell:
+#        """
+#        chmod +x {params.path}
+#        python3 {params.path} \
+#            --bed {input.consensus} \
+#            --inputs {input.bams} \
+#            --samples {params.sample_names} \
+#            --output {output.counts_matrix} \
+#            --desc {output.description} \
+#            --log {log}
+#        """
+
+rule merge_generate_count_matrix_by_featureCounts:
     """
-    Generate a read count matrix for the group-level consensus peakset across all samples.
+    Generate a read count matrix using featureCounts for the group-level consensus peakset.
 
-    This rule quantifies chromatin accessibility by counting the number of sequencing
-    reads overlapping each region in the group-level consensus peakset for every
-    sample in the experiment. The resulting count matrix provides a quantitative
-    measure of accessibility for each peak across all experimental conditions,
-    serving as the foundation for differential accessibility analysis.
-
-    Key features of the count matrix generation:
-    - Uses the consensus peakset as a common coordinate system
-    - Counts reads in each shifted BAM file for every sample
-    - Maintains sample identity for downstream statistical comparisons
-    - Generates a matrix description file for documentation
-
-    The count matrix is structured with peaks as rows and samples as columns, with
-    each cell containing the number of reads from that sample overlapping that peak.
-    This format is compatible with popular differential accessibility tools like DESeq2
-    and edgeR, enabling robust statistical analysis of chromatin accessibility changes
-    between experimental conditions.
+    This rule quantifies chromatin accessibility by counting the number of ATAC-seq
+    paired-end fragments overlapping each region in the group-level consensus peakset.
+    By replacing bedtools multicov with featureCounts (-p flag), we ensure that the 
+    entire DNA fragment (insert size) is correctly evaluated against the peak boundaries, 
+    providing a much more accurate representation of the open chromatin state.
     """
     input:
         consensus = "04.consensus/group_consensus_peaks.bed",
         bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
     output:
         counts_matrix = "04.consensus/merge_consensus_counts_matrix.txt",
-        description = "04.consensus/merge_matrix_description.txt"
+        description = "04.consensus/merge_matrix_description.txt",
+        summary = "04.consensus/merge_consensus_counts_matrix.txt.summary",
+        saf = temp("04.consensus/group_consensus_peaks.saf")
     conda:
-        workflow.source_path("../envs/bedtools.yaml"),
+        workflow.source_path("../envs/subread.yaml"), 
     log:
-        "logs/04.consensus/multicov.log"
-    params:
-        sample_names = list(samples.keys()),
-        path = workflow.source_path(config['parameter']['generate_atac_matrix']['path'])
+        "logs/04.consensus/merge_featureCounts.log"
+    benchmark:
+        "benchmarks/04.consensus/merge_featureCounts.txt"
     threads: 
-        config['parameter']['threads']['bedtools']
+        config['parameter']['threads'].get('featurecounts', 16)
     shell:
         """
-        chmod +x {params.path}
-        python3 {params.path} \
-            --bed {input.consensus} \
-            --inputs {input.bams} \
-            --samples {params.sample_names} \
-            --output {output.counts_matrix} \
-            --desc {output.description} \
-            --log {log}
+        echo "1. Converting GROUP consensus BED to SAF format..." > {log}
+        # 使用 awk 快速将 BED 转换为 SAF
+        awk 'BEGIN{{OFS="\\t"; print "GeneID\\tChr\\tStart\\tEnd\\tStrand"}} \
+            {{print $1":"$2"-"$3, $1, $2, $3, "+"}}' {input.consensus} > {output.saf}
+
+        echo "2. Running featureCounts for ATAC-seq PE fragments..." >> {log}
+        # 核心定量命令
+        featureCounts \
+            -p \
+            -B \
+            -C \
+            -T {threads} \
+            -F SAF \
+            -a {output.saf} \
+            -o {output.counts_matrix} \
+            {input.bams} >> {log} 2>&1
+            
+        echo "3. Cleaning up matrix header for downstream compatibility..." >> {log}
+        # 裁掉列名中的路径和后缀，只保留纯净的 Sample Name，防止合并表头错位
+        sed -i 's|02.mapping/shifted/||g; s|.shifted.sorted.bam||g' {output.counts_matrix}
+
+        echo "4. Generating description file..." >> {log}
+        # 自动生成简易报告
+        echo "File Name: $(basename {output.counts_matrix})" > {output.description}
+        echo "Generated Date: $(date +'%Y-%m-%d %H:%M:%S')" >> {output.description}
+        echo "--------------------------------------------------" >> {output.description}
+        echo "Total Samples Quantified: $(echo "{input.bams}" | wc -w)" >> {output.description}
+        echo "Total Group Consensus Peaks: $(wc -l < {input.consensus})" >> {output.description}
         """
 
 rule merge_generate_count_matrix_ann:
