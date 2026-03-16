@@ -154,7 +154,7 @@ rule estimate_library_complexity:
     benchmark:
         "benchmarks/{sample}_preseq_benchmark.txt",
     threads:
-        1,
+        1
     shell:
         """
         exec 2> {log}

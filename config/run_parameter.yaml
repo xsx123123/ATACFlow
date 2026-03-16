@@ -11,15 +11,15 @@ parameter:
     bowtie2: 16
     chromap: 16
     bam2cram: 8
-    samtools: 10
-    bamCoverage: 10
-    bedtools: 10
+    samtools: 8
+    bamCoverage: 8
+    bedtools: 8
     featurecounts: 16
     homer: 10
     rnaflow-cli: 8
     Report: 10
-    samtools_flagstat: 10
-    samtools_stats: 10
+    samtools_flagstat: 4
+    samtools_stats: 4
   validate_fastq_screen:
     path: ../src/src/fastq_screen/validate_fastq_screen.py
     path_conf: ../data/fastq_screen.conf_template
