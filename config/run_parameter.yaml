@@ -8,8 +8,8 @@ parameter:
     fastp: 8
     multiqc: 1
     fastq_screen: 10
-    bowtie2: 16
-    chromap: 16
+    bowtie2: 10
+    chromap: 10
     bam2cram: 8
     samtools: 8
     bamCoverage: 8
