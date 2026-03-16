@@ -9,6 +9,20 @@ import time
 from pathlib import Path
 from typing import Dict, Union, List, Callable
 from rich import print as rich_print
+from snakemake.io import expand
+from loguru import logger
+
+
+from utils.datadeliver import (
+    qc_clean,
+    mapping,
+    peak_calling,
+    motif_analysis,
+    consensus_peaks,
+    diff_peaks,
+    merge_group_analysis,
+    atac_qc
+)
 
 def DataDeliver(config: Dict = None, samples: Dict = None, 
                 merge_group: bool = False, groups: Dict = None) -> List[str]:
@@ -40,7 +54,7 @@ def DataDeliver(config: Dict = None, samples: Dict = None,
     def execute_qc_clean(samples, data_deliver):
         return qc_clean(samples, data_deliver)
 
-    def execute_mapping(samples, data_deliver):
+    def execute_mapping(samples, data_deliver, config):
         return mapping(samples, data_deliver, config)
 
     def execute_peak_calling(samples, data_deliver):
@@ -175,7 +189,7 @@ def get_sample_data_dir(sample_id: str = None, config: dict = None) -> str:
     raise FileNotFoundError(f"无法在 {config['raw_data_path']} 中找到 {sample_id} 的数据目录或文件")
 
 def get_all_input_dirs(sample_keys:str = None,
-                       config:dict = config) -> list:
+                       config:dict = None) -> list:
     """
     遍历所有样本 ID，调用 get_sample_data_dir，
     返回一个包含所有数据目录的列表。

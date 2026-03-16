@@ -40,7 +40,7 @@ rule Bowtie2_mapping:
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
-        workflow.source_path("../../envs/bowtie2.yaml"),
+        workflow.source_path("../../../envs/bowtie2.yaml"),
     log:
         "logs/02.mapping/Bowtie2_{sample}.log",
     message:

@@ -10,6 +10,7 @@ parameter:
     fastq_screen: 10
     bowtie2: 16
     chromap: 16
+    bam2cram: 8
     samtools: 10
     bamCoverage: 10
     bedtools: 10
@@ -67,7 +68,7 @@ parameter:
     length_required: 25
     quality_threshold: 25
     adapter_fasta: "../data/Universal_Adapter.fa"
-  RNAFlow_Deliver_Tool:
+  ATACFlow_Deliver_Tool:
     config_path: "../src/src/data-deliver/RNAFlow_Deliver_Tool/config/full_delivery_config.yaml"
     config_path_report: "../src/src/data-deliver/RNAFlow_Deliver_Tool/config/report.yaml"
   Report:

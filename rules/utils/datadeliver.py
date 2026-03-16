@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Dict, List, Union
 from snakemake.io import expand
 
-
 def qc_clean(samples: Dict = None, data_deliver: List = None) -> List:
     """
     Handle quality control and cleaning steps.

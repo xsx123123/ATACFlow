@@ -34,7 +34,7 @@ rule Chromap_mapping:
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
-        workflow.source_path("../../envs/chromap.yaml"),
+        workflow.source_path("../../../envs/chromap.yaml"),
     log:
         "logs/02.mapping/Chromap_{sample}.log",
     message:
