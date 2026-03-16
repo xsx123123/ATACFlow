@@ -159,8 +159,8 @@ rule estimate_library_complexity:
         """
         exec 2> {log}
         set -x
-        preseq lc_extrap -pe -v -output {output.preseq} -B {input.sort_bam}
-        preseq c_curve -pe -v -output {output.c_curve} -B  {input.sort_bam}
+        preseq lc_extrap -pe -v -output {output.preseq} -B {input.sort_bam} || echo "Preseq lc_extrap failed for {wildcards.sample}" > {output.preseq}
+        preseq c_curve -pe -v -output {output.c_curve} -B {input.sort_bam} || echo "Preseq c_curve failed for {wildcards.sample}" > {output.c_curve}
         """
 
 rule samtools_flagst:
