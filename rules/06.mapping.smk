@@ -375,7 +375,7 @@ rule mark_duplicates:
     params:
         java_opts = get_java_opts,  
         aligner = config.get("mapping_tools", "bowtie2"),
-        workspace = config.get(workflow)
+        workspace = config.get("workflow")
     shell:
         """
         if [ "{params.aligner}" = "chromap" ]; then
