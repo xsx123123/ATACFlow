@@ -380,14 +380,21 @@ rule mark_duplicates:
         if [ "{params.aligner}" = "chromap" ]; then
             echo "Using Chromap: Skipping GATK MarkDuplicates..." > {log}
         
-            ln -sf $(readlink -f {input.bam}) {output.bam}
+            INPUT_ABS=$(readlink -f {input.bam})
+            OUTPUT_ABS=$(readlink -f {output.bam})
+            
+            ln -sf "$INPUT_ABS" {output.bam}
             
             echo "MarkDuplicates skipped. Deduplication was automatically done by Chromap." > {output.metrics}
-            
+
             if [ -f "{input.bam}.bai" ]; then
-                ln -sf $(readlink -f {input.bam}.bai) {output.bam}.bai
-            elif [ -f "${{input.bam%.bam}.bai}" ]; then
-                ln -sf $(readlink -f ${{input.bam%.bam}.bai}) ${{output.bam%.bam}.bai}
+                ln -sf "$INPUT_ABS.bai" {output.bam}.bai
+            else
+                INPUT_PREFIX="${{INPUT_ABS%.bam}}"
+                OUTPUT_PREFIX="${{OUTPUT_ABS%.bam}}"
+                if [ -f "$INPUT_PREFIX.bai" ]; then
+                    ln -sf "$INPUT_PREFIX.bai" "$OUTPUT_PREFIX.bai"
+                fi
             fi
         else
             echo "Running GATK MarkDuplicates..." > {log}
