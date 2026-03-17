@@ -375,26 +375,29 @@ rule mark_duplicates:
     params:
         java_opts = get_java_opts,  
         aligner = config.get("mapping_tools", "bowtie2"),
+        workspace = config.get(workflow)
     shell:
         """
         if [ "{params.aligner}" = "chromap" ]; then
             echo "Using Chromap: Skipping GATK MarkDuplicates..." > {log}
         
-            INPUT_ABS=$(readlink -f {input.bam})
-            OUTPUT_ABS=$(readlink -f {output.bam})
+            # 使用 realpath 获取输入和输出的绝对路径，这比 readlink 更稳
+            IN_ABS=$(realpath {input.bam})
+            OUT_ABS=$(realpath {output.bam})
+            METRICS_ABS=$(realpath {output.metrics})
             
-            ln -sf "$INPUT_ABS" {output.bam}
+            # 创建软链接
+            ln -sf "$IN_ABS" "$OUT_ABS"
             
-            echo "MarkDuplicates skipped. Deduplication was automatically done by Chromap." > {output.metrics}
+            # 写入 metrics 内容
+            echo "MarkDuplicates skipped. Deduplication was automatically done by Chromap." > "$METRICS_ABS"
 
-            if [ -f "{input.bam}.bai" ]; then
-                ln -sf "$INPUT_ABS.bai" {output.bam}.bai
-            else
-                INPUT_PREFIX="${{INPUT_ABS%.bam}}"
-                OUTPUT_PREFIX="${{OUTPUT_ABS%.bam}}"
-                if [ -f "$INPUT_PREFIX.bai" ]; then
-                    ln -sf "$INPUT_PREFIX.bai" "$OUTPUT_PREFIX.bai"
-                fi
+            # 智能处理索引文件
+            # 检查 .bam.bai 或 .bai
+            if [ -f "${{IN_ABS}}.bai" ]; then
+                ln -sf "${{IN_ABS}}.bai" "${{OUT_ABS}}.bai"
+            elif [ -f "${{IN_ABS%.bam}}.bai" ]; then
+                ln -sf "${{IN_ABS%.bam}}.bai" "${{OUT_ABS%.bam}}.bai"
             fi
         else
             echo "Running GATK MarkDuplicates..." > {log}
@@ -586,17 +589,29 @@ rule atac_seq_shift:
         20
     shell:
         """
-        # 使用 {{params.whether_shift}} 将 Snakemake 变量传给 Bash
         if [ "{params.whether_shift}" = "chromap" ]; then
-            echo "Using Chromap: Skipping deepTools shift and creating symlinks..." > {log}
-            ln -sf $(readlink -f {input.bam}) {output.shifted_bam}
-            ln -sf $(readlink -f {input.bam}) {output.shifted_sort_bam}
-            ln -sf $(readlink -f {input.bai}) {output.shifted_sort_bam_bai}
+            echo "Using Chromap: Creating robust symlinks for already shifted data..." > {log}
+            
+            # 获取输入的绝对路径
+            IN_BAM_ABS=$(realpath {input.bam})
+            IN_BAI_ABS=$(realpath {input.bai})
+            
+            # 创建软链接到两个输出目标
+            ln -sf "$IN_BAM_ABS" {output.shifted_bam}
+            ln -sf "$IN_BAM_ABS" {output.shifted_sort_bam}
+            ln -sf "$IN_BAI_ABS" {output.shifted_sort_bam_bai}
+            
+            echo "Symlinks created successfully." >> {log}
         else
             echo "Running deepTools alignmentSieve for Tn5 shifting..." > {log}
-            alignmentSieve -b {input.bam} -o {output.shifted_bam} --ATACshift -p {threads} 2>> {log} && \
-            samtools sort -@ {threads} {output.shifted_bam} -o {output.shifted_sort_bam} && \
-            samtools index {output.shifted_sort_bam}
+            # 1. 执行偏移
+            alignmentSieve -b {input.bam} -o {output.shifted_bam} --ATACshift -p {threads} 2>> {log}
+            
+            # 2. 排序
+            samtools sort -@ {threads} {output.shifted_bam} -o {output.shifted_sort_bam} 2>> {log}
+            
+            # 3. 建立索引
+            samtools index {output.shifted_sort_bam} 2>> {log}
         fi
         """
 
