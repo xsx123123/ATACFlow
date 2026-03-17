@@ -382,9 +382,9 @@ rule mark_duplicates:
             echo "Using Chromap: Skipping GATK MarkDuplicates..." > {log}
         
             # 使用 realpath 获取输入和输出的绝对路径，这比 readlink 更稳
-            IN_ABS=$({params.workspace}/{input.bam})
-            OUT_ABS=$({params.workspace}/{output.bam})
-            METRICS_ABS=$({params.workspace}/{output.metrics})
+            IN_ABS={params.workspace}/{input.bam}
+            OUT_ABS={params.workspace}/{output.bam}
+            METRICS_ABS={params.workspace}/{output.metrics}
             
             # 创建软链接
             ln -sf "$IN_ABS" "$OUT_ABS"
@@ -594,8 +594,8 @@ rule atac_seq_shift:
             echo "Using Chromap: Creating robust symlinks for already shifted data..." > {log}
             
             # 获取输入的绝对路径
-            IN_BAM_ABS=$({params.workspace}/{input.bam})
-            IN_BAI_ABS=$({params.workspace}/{input.bai})
+            IN_BAM_ABS={params.workspace}/{input.bam}
+            IN_BAI_ABS={params.workspace}/{input.bai}
             
             # 创建软链接到两个输出目标
             ln -sf "$IN_BAM_ABS" {output.shifted_bam}
