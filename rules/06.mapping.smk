@@ -265,29 +265,18 @@ rule add_read_groups:
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     threads: 
-        4
+        config['parameter']['threads']['addreplacerg'],
     params:
-        java_opts = get_java_opts,
         PL = config["parameter"]["AddOrReplaceReadGroups"]["PL"],
     shell:
         """
-        # 使用 samtools addreplacerg 为 BAM 文件添加 read group 信息
-        # -@ {threads}: 指定使用的线程数
-        # -r: 指定 read group 字符串，格式为 @RG\tID=xxx\tLB=xxx\tPL=xxx\tPU=xxx\tSM=xxx
-        #     ID: Read group 唯一标识符，使用样本名
-        #     LB: Library 标识符，标识文库
-        #     PL: Platform 平台 (如 illumina)
-        #     PU: Platform Unit 平台单元 (flow cell + lane)
-        #     SM: Sample 样本名
-        # -o: 输出 BAM 文件路径
-        # -O BAM: 指定输出格式为 BAM
         ( samtools addreplacerg \
-                    -@ {threads} \
-                    -r "@RG\tID={wildcards.sample}\tLB=lib1\tPL={params.PL}\tPU=unit1\tSM={wildcards.sample}" \
-                    -o {output.bam} \
-                    -O BAM {input.bam} && \
-        # 为输出的 BAM 文件创建索引 (.bai)
-        samtools index -@ {threads} {output.bam} ) 2> {log}
+            -@ {threads} \
+            -r $'@RG\\tID:{wildcards.sample}\\tLB:lib1\\tPL:{params.PL}\\tPU:unit1\\tSM:{wildcards.sample}' \
+            -o {output.bam} \
+            -O BAM {input.bam} && \
+          samtools index -@ {threads} {output.bam} \
+        ) 2> {log}
         """
 
 # --------------- mark dup Rules --------------- #

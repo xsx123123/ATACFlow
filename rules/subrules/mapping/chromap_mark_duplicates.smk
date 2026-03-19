@@ -51,6 +51,5 @@ rule mark_duplicates_chromap:
         """
         ln -s -r {input.bam} {output.bam} \
         && ln -s -r {input.bai} {output.bai} \
-        && echo "Created symlink: {output.bam} -> {input.bam}" >> {log} \
-        && echo "Softlink created"
+        && echo "Created symlink: {output.bam} -> {input.bam}" >> {log} 
         """

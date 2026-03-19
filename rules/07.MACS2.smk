@@ -53,7 +53,7 @@ rule macs2_callpeak:
     benchmark:
         "benchmarks/03.peak_calling/macs2_{sample}.txt",
     threads:
-        1
+        config['parameter']['threads']['macs2'],
     params:
         gsize = config['genome_info'][config['Genome_Version']]['effectiveGenomeSize'],
         qvalue = config['parameter']['macs2']['qvalue'],

@@ -12,6 +12,7 @@ parameter:
     chromap: 10
     bam2cram: 8
     samtools: 8
+    macs2: 1
     bamCoverage: 8
     bedtools: 8
     featurecounts: 16
@@ -20,6 +21,7 @@ parameter:
     Report: 10
     samtools_flagstat: 4
     samtools_stats: 4
+    addreplacerg: 4
   validate_fastq_screen:
     path: ../src/src/fastq_screen/validate_fastq_screen.py
     path_conf: ../data/fastq_screen.conf_template
