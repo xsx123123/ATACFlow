@@ -61,12 +61,12 @@ def mapping(
             "02.mapping/cram/{sample}.cram.crai", sample=samples.keys()
         )
     )
-    data_deliver.extend(
-        expand("02.mapping/preseq/{sample}.lc_extrap.txt", sample=samples.keys())
-    )
-    data_deliver.extend(
-        expand("02.mapping/preseq/{sample}.c_curve.txt", sample=samples.keys())
-    )
+    # data_deliver.extend(
+    #     expand("02.mapping/preseq/{sample}.lc_extrap.txt", sample=samples.keys())
+    # )
+    # data_deliver.extend(
+    #     expand("02.mapping/preseq/{sample}.c_curve.txt", sample=samples.keys())
+    # )
     data_deliver.extend(
         expand(
             "02.mapping/filter_pe/{sample}.filter_pe.sorted.bam", sample=samples.keys()

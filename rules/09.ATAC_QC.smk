@@ -131,8 +131,8 @@ rule multiqc_ATAC_QC:
     input:
         json = expand("02.mapping/ataqv/{sample}.ataqv.json",sample=samples.keys()),
         log_out = expand("02.mapping/ataqv/{sample}.ataqv.out",sample=samples.keys()),
-        preseq = expand('02.mapping/preseq/{sample}.lc_extrap.txt',sample=samples.keys()),
-        c_curve = expand('02.mapping/preseq/{sample}.c_curve.txt',sample=samples.keys()),
+        # preseq = expand('02.mapping/preseq/{sample}.lc_extrap.txt',sample=samples.keys()),
+        # c_curve = expand('02.mapping/preseq/{sample}.c_curve.txt',sample=samples.keys()),
         samtools_flagstat = expand('02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv',sample=samples.keys()),
         samtools_stats = expand('02.mapping/samtools_stats/{sample}_bam_stats.tsv',sample=samples.keys()),
     output:
