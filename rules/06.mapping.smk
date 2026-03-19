@@ -4,8 +4,10 @@ import os
 
 def get_java_opts(wildcards, input, resources):
     mem_gb = max(int(resources.mem_mb / 1024) - 4, 2)
-    return f"-Xmx{mem_gb}g -XX:+UseParallelGC -XX:ParallelGCThreads=4"
-
+    if mem_gb > 50:
+        mem_gb = 20
+        return f"-Xmx{mem_gb}g -XX:+UseParallelGC -XX:ParallelGCThreads=4"
+    
 def get_blacklist_path(wildcards):
     """
     Get the blacklist path based on genome build
@@ -161,9 +163,7 @@ rule estimate_library_complexity:
         set -x
         echo "===== Start preseq run for sample {wildcards.sample} at $(date) ====="
         preseq lc_extrap -pe -v -output {output.preseq} -B {input.sort_bam} || \
-        { echo "Preseq lc_extrap failed for {wildcards.sample}" | tee {output.preseq}; }
         preseq c_curve -pe -v -output {output.c_curve} -B {input.sort_bam} || \
-        { echo "Preseq c_curve failed for {wildcards.sample}" | tee {output.c_curve}; }
         echo "===== Finished preseq run for sample {wildcards.sample} at $(date) ====="
         """
 
@@ -305,27 +305,26 @@ rule add_read_groups:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.bam',
         bai = '02.mapping/gatk/{sample}/{sample}.rg.bam.bai',
     conda:
-        workflow.source_path("../envs/gatk.yaml")
+        workflow.source_path("../envs/samtools.yaml")
     log:
         "logs/02.mapping/gatk/AddRG/{sample}.log"
     benchmark:
         "benchmarks/02.mapping/gatk/AddRG/{sample}.txt"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
-    threads: 1
+    threads: 
+        4
     params:
         java_opts = get_java_opts,
         PL = config["parameter"]["AddOrReplaceReadGroups"]["PL"],
     shell:
         """
-        gatk --java-options "{params.java_opts}" AddOrReplaceReadGroups \
-             -I {input.bam} \
-             -O {output.bam} \
-             -SO coordinate \
-             -ID 1 -LB lib1 \
-             -PL {params.PL} -PU unit1 \
-             -SM {wildcards.sample} \
-             --CREATE_INDEX true 2> {log}
+        ( samtools  addreplacerg \
+                    -@ {threads} \
+                    -r "@RG\tID={wildcards.sample}\tLB=lib1\tPL={params.PL}\tPU=unit1\tSM={wildcards.sample}" \
+                    -o {output.bam} \
+                    -O BAM {input.bam} && \
+                    samtools index -@ {threads} {output.bam} ) 2> {log}
         """
 
 # --------------- mark dup Rules --------------- #
@@ -469,15 +468,14 @@ rule filter_proper_pairs:
         """
 
 
-# --------------- mark dup Rules --------------- #
+# --------------- tn5 shift Rules --------------- #
 if config.get("mapping_tools","chromap") == "chromap":
     include: "./subrules/mapping/chromap_shift.smk"
     logger.info("skiping bam tn5 shift for Chromap") 
 else:
     include: "./subrules/mapping/bowtie2_shift.smk "
     logger.info("ATAC bam tn5 shift for bowtie2") 
-# --------------- mark dup Rules --------------- #
-
+# ---------------tn5 shift Rules --------------- #
 
 
 rule generate_bigwig_coverage:

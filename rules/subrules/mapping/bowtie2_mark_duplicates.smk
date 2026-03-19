@@ -35,6 +35,7 @@ rule mark_duplicates:
     """
     input:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.bam',
+        bai = '02.mapping/gatk/{sample}/{sample}.rg.bam.bai',
     output:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam',
         metrics = '02.mapping/gatk/{sample}/{sample}.rg.dedup.metrics.txt',
