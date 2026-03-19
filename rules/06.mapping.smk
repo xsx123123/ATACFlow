@@ -119,54 +119,6 @@ rule bam2cram:
         samtools index  -@ {threads} {output.cram}
         """
 
-rule estimate_library_complexity:
-    """
-    Estimate library complexity and predict sequencing depth using Preseq.
-
-    This rule analyzes the complexity of the sequencing library by estimating the
-    number of unique molecules present and predicting how many additional unique
-    reads could be obtained with increased sequencing depth. Library complexity
-    is a critical quality metric that indicates whether the library was sufficiently
-    complex or if PCR amplification bias has reduced diversity.
-
-    Key analyses performed:
-    - lc_extrap: Extrapolates the complexity curve to predict unique read yield
-    - c_curve: Generates the complexity curve showing observed vs. expected unique reads
-
-    High complexity libraries show a curve that plateaus slowly, indicating that
-    additional sequencing would yield many new unique reads. Low complexity libraries
-    show rapid saturation, suggesting PCR duplicates dominate and deeper sequencing
-    would be inefficient. This information guides decisions about whether additional
-    sequencing would be beneficial for the experiment.
-    """
-    input:
-        sort_bam = '02.mapping/Aligner/{sample}/{sample}.sorted.bam',
-        sort_bai = '02.mapping/Aligner/{sample}/{sample}.sorted.bam.bai',
-    output:
-        preseq = '02.mapping/preseq/{sample}.lc_extrap.txt',
-        c_curve = '02.mapping/preseq/{sample}.c_curve.txt',
-    resources:
-        **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
-    conda:
-        workflow.source_path("../envs/Preseq.yaml"),
-    message:
-        "Running Preseq for {wildcards.sample}",
-    log:
-        "logs/02.mapping/preseq_{sample}.log",
-    benchmark:
-        "benchmarks/{sample}_preseq_benchmark.txt",
-    threads:
-        1
-    shell:
-        """
-        exec &> {log}
-        set -x
-        echo "===== Start preseq run for sample {wildcards.sample} at $(date) ====="
-        preseq lc_extrap -pe -v -output {output.preseq} -B {input.sort_bam} || \
-        preseq c_curve -pe -v -output {output.c_curve} -B {input.sort_bam} || \
-        echo "===== Finished preseq run for sample {wildcards.sample} at $(date) ====="
-        """
-
 rule samtools_flagst:
     """
     Generate flag statistics for BAM files using samtools flagstat.
