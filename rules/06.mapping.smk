@@ -272,18 +272,18 @@ rule samtools_stats:
 
 rule add_read_groups:
     """
-    Add read groups to BAM file using GATK AddOrReplaceReadGroups.
+    Add read groups to BAM file using samtools addreplacerg.
 
-    This rule assigns read group information to each alignment in the BAM file,
+    This rule assigns read group (RG) information to each alignment in the BAM file,
     which is essential for downstream GATK tools and other analysis pipelines that
     require read group metadata. Read groups allow tracking of sequencing data
     from different libraries, lanes, or flow cells, enabling proper handling of
     technical artifacts and batch effects.
 
     Key read group fields assigned:
-    - ID: Read group identifier (set to "1" for single sample processing)
+    - ID: Read group identifier (set to sample name for unique identification)
     - LB: Library identifier (set to "lib1" for tracking library preparation)
-    - PL: Platform/technology used (set to "illumina" for Illumina sequencing)
+    - PL: Platform/technology used (configured via config, typically "illumina")
     - PU: Platform unit/flow cell barcode and lane (set to "unit1")
     - SM: Sample name (derived from wildcards.sample for sample tracking)
 
@@ -319,12 +319,23 @@ rule add_read_groups:
         PL = config["parameter"]["AddOrReplaceReadGroups"]["PL"],
     shell:
         """
-        ( samtools  addreplacerg \
+        # 使用 samtools addreplacerg 为 BAM 文件添加 read group 信息
+        # -@ {threads}: 指定使用的线程数
+        # -r: 指定 read group 字符串，格式为 @RG\tID=xxx\tLB=xxx\tPL=xxx\tPU=xxx\tSM=xxx
+        #     ID: Read group 唯一标识符，使用样本名
+        #     LB: Library 标识符，标识文库
+        #     PL: Platform 平台 (如 illumina)
+        #     PU: Platform Unit 平台单元 (flow cell + lane)
+        #     SM: Sample 样本名
+        # -o: 输出 BAM 文件路径
+        # -O BAM: 指定输出格式为 BAM
+        ( samtools addreplacerg \
                     -@ {threads} \
                     -r "@RG\tID={wildcards.sample}\tLB=lib1\tPL={params.PL}\tPU=unit1\tSM={wildcards.sample}" \
                     -o {output.bam} \
                     -O BAM {input.bam} && \
-                    samtools index -@ {threads} {output.bam} ) 2> {log}
+        # 为输出的 BAM 文件创建索引 (.bai)
+        samtools index -@ {threads} {output.bam} ) 2> {log}
         """
 
 # --------------- mark dup Rules --------------- #
