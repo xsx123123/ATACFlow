@@ -41,6 +41,8 @@ parameter:
     binSize: 10
     smoothLength: 14
     normalizeUsing: RPKM # RPKM,CPM,BPM,RPGC
+  AddOrReplaceReadGroups:
+    PL: illumina
   gatk:
     filter:
       rna_seq:

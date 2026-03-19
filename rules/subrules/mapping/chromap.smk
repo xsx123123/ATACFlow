@@ -29,8 +29,8 @@ rule Chromap_mapping:
         r2 = "01.qc/short_read_trim/{sample}.R2.trimed.fq.gz",
     output:
         sam = temp('02.mapping/Aligner/{sample}/{sample}.sam'),
-        bam = temp('02.mapping/Aligner/{sample}/{sample}.bam'),
-        summary = temp('02.mapping/Aligner/{sample}/{sample}.summary'),
+        bam = '02.mapping/Aligner/{sample}/{sample}.bam',
+        summary = '02.mapping/Aligner/{sample}/{sample}.summary',
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:

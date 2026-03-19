@@ -135,7 +135,6 @@ rule multiqc_ATAC_QC:
         c_curve = expand('02.mapping/preseq/{sample}.c_curve.txt',sample=samples.keys()),
         samtools_flagstat = expand('02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv',sample=samples.keys()),
         samtools_stats = expand('02.mapping/samtools_stats/{sample}_bam_stats.tsv',sample=samples.keys()),
-        metrics = expand('02.mapping/gatk/{sample}/{sample}.rg.dedup.metrics.txt',sample=samples.keys()),
     output:
         report = '05.ATAC_QC/multiqc_ATAC_report.html',
     resources:
