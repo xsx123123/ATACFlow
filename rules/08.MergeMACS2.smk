@@ -227,6 +227,24 @@ rule merge_create_consensus_peakset:
         bedtools merge -i stdin > {output.consensus} 2> {log}
         """
 
+rule merge_idr_peaks:
+    """
+    """
+    input:
+        peak = "03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.narrowPeak"
+    output:
+        idr = "03.peak_calling/MERGE_IDR/{group}/Final_Consensus_Peaks.bed"
+    conda:
+        workflow.source_path("../envs/idr.yaml"),
+    params:
+        idr_scripts =  config["parameter"]["idr_scripts"]["path"],
+    shell:
+        """
+        python3 ./run_idr_oop.py -i Bud-1_peaks.narrowPeak Bud-2_peaks.narrowPeak Bud-3_peaks.narrowPeak \
+        -o ./Bud -t 3
+        """
+
+
 rule merge_homer_annotate_consensus_peaks:
     """
     Annotate the group-level consensus peaks relative to gene features using HOMER.

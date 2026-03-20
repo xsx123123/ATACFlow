@@ -34,6 +34,8 @@ parameter:
     aligner: Bowtie2
   filter_pe:
     path: ../src/src/ATACTools/filter_pe/target/release/filter_pe
+  idr_scripts:
+    path: ../src/src/ATACTools/idr/run_idr_oop.py
   macs2:
     qvalue: 0.05
   draw_tss_plot:

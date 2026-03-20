@@ -170,7 +170,7 @@ def validate_genome_version(config: Dict[str, Any], logger = None) -> str:
         logger.info(f"Genome version verified: '{clean_version}' is supported.")
         return clean_version
     else:
-        # 错误信息更友好，列出支持的列表
+        # More user-friendly error message listing supported versions
         msg = (f"Unsupported genome version: '{clean_version}'. "
                f"Supported versions are: {allowed_list}")
         logger.error(msg)
@@ -178,17 +178,17 @@ def validate_genome_version(config: Dict[str, Any], logger = None) -> str:
 
     def validate_species(config: Dict[str, Any], logger=None) -> str:
     """
-    验证 config 中的 'species' 字符串是否合法（ataqv 要求不能含有空格）。
+    Validate if the 'species' string in config is valid (ataqv requires no spaces).
 
     Args:
-        config (dict): 配置字典。
-        logger: 日志对象。
+        config (dict): Configuration dictionary.
+        logger: Logger instance.
 
     Returns:
-        str: 验证后的物种名。
+        str: Validated species name.
 
     Raises:
-        ValueError: 如果物种名为空或包含空格。
+        ValueError: If species name is empty or contains spaces.
     """
     if logger is None:
         from snakemake_logger_plugin_rich_loguru import get_analysis_logger
@@ -197,26 +197,27 @@ def validate_genome_version(config: Dict[str, Any], logger = None) -> str:
     species = config.get("species")
 
     if not species:
-        msg = "Config 缺失必要参数: 'species'。请在 config.yaml 中定义。"
+        msg = "Config missing required key: 'species'. Please define it in config.yaml."
         logger.error(msg)
         raise ValueError(msg)
 
-    # 去除首尾空格
+    # Remove leading/trailing whitespace
     clean_species = str(species).strip()
 
     if not clean_species:
-        msg = "Config 中的 'species' 不能为空字符串。"
+        msg = "The 'species' value in config cannot be an empty string."
         logger.error(msg)
         raise ValueError(msg)
 
-    # 核心校验：ataqv 作为命令行位置参数，中间不能有空格
+    # Core validation: ataqv uses species as a positional command line argument, so it cannot contain spaces
     if " " in clean_species:
         msg = (
-            f"Config 中的 'species' 参数 ('{clean_species}') 格式错误！"
-            f"ataqv 不允许物种名包含空格，请使用下划线代替（例如: 'Homo_sapiens' 而不是 'Homo sapiens'）。"
+            f"Format error for 'species' parameter ('{clean_species}')! "
+            f"ataqv does not allow spaces in the species name. "
+            f"Please use underscores instead (e.g., 'Homo_sapiens' instead of 'Homo sapiens')."
         )
         logger.error(msg)
         raise ValueError(msg)
 
-    logger.info(f"物种名称验证通过: '{clean_species}'")
+    logger.info(f"Species name verified: '{clean_species}'")
     return clean_species
