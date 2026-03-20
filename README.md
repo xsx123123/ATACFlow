@@ -348,12 +348,95 @@ peak_calling:
 
 ## ⚙️ 配置文件
 
-流程使用多个配置文件来控制分析参数：
+流程使用多个独立的配置文件来控制不同方面的参数，这种设计使得：
+- **配置可复用**：相同物种的配置可以快速迁移到新项目
+- **参数易维护**：修改特定类型参数时只需编辑对应文件
+- **职责分离**：避免单个配置文件过于庞大
 
-- `config.yaml`: 基本配置参数
-- `reference.yaml`: 参考基因组路径配置
-- `run_parameter.yaml`: 软件运行参数
-- `cluster_config.yaml`: 集群资源配置
+### 配置文件说明
+
+| 文件 | 作用 | 主要内容 |
+|------|------|----------|
+| `config.yaml` | 主配置文件 | 流程控制开关、输出设置、Peak Calling策略 |
+| `reference.yaml` | 参考基因组配置 | 基因组索引路径、GTF、GFF、染色体信息等 |
+| `run_parameter.yaml` | 运行时参数 | 线程数、软件参数、脚本路径、阈值设置 |
+| `cluster_config.yaml` | 集群配置 | 集群队列、资源限制、任务调度参数 |
+
+#### config.yaml - 主配置文件
+
+控制流程的整体行为和开关：
+
+```yaml
+# Pipeline Control Flags
+print_target: false     # 调试模式：打印目标文件列表
+print_sample: false     # 调试模式：打印样本信息
+log_level: INFO         # 日志级别
+bam_remove: true        # 是否清理中间BAM文件
+only_qc: false          # 仅运行QC分析（跳过差异分析）
+
+# Peak Calling 配置 (v0.0.5新增)
+peak_calling:
+  use_pooled_peaks: true  # 使用pooled peaks进行DEG分析
+```
+
+#### reference.yaml - 参考基因组配置
+
+使用独立的 index 目录配置，便于索引的快速迁移：
+
+```yaml
+# 示例：人类基因组配置
+hg38:
+  index: /path/to/bowtie2/hg38  # 基因组索引目录
+  genome_fa: /path/to/genome/hg38.fa
+  genome_gtf: /path/to/annotation/genes.gtf
+  # ... 其他物种特异文件
+```
+
+> **设计思路**：将索引路径集中配置在 reference.yaml 中，当需要迁移到新服务器或新项目时，只需修改此文件即可，无需修改代码或重新构建索引。
+
+#### run_parameter.yaml - 运行时参数
+
+包含所有软件运行时的可调整参数，可通过修改此文件快速调整分析行为：
+
+```yaml
+parameter:
+  threads:
+    macs2: 8              # MACS2线程数
+    homer: 10             # HOMER线程数
+    featurecounts: 16     # featureCounts线程数
+  macs2:
+    qvalue: 0.05          # PeakCalling显著性阈值
+  DEG:
+    LFC: 1                # 差异分析log2FoldChange阈值
+    PVAL: 0.05            # 差异分析p值阈值
+  # ... 更多参数
+```
+
+#### cluster_config.yaml - 集群配置
+
+适配不同集群环境的资源配置：
+
+```yaml
+__default__:
+  threads: 8
+  memory: 16G
+  queue: default
+  time: "7-0:00:00"
+
+macs2:
+  threads: 4
+  memory: 32G
+  queue: fast
+  time: "2-0:00:00"
+```
+
+### 配置文件加载顺序
+
+Snakemake 按以下顺序加载配置文件（后者覆盖前者）：
+
+1. `config.yaml` → 2. `reference.yaml` → 3. `run_parameter.yaml` → 4. `cluster_config.yaml`
+
+可通过 `--config` 参数在命令行覆盖：
 
 ## 🧠 流程设计哲学
 
