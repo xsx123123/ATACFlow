@@ -58,7 +58,7 @@ rule merge_DEG:
     regions that are most likely to represent genuine regulatory elements.
     """
     input:
-        counts = "04.consensus/merge_consensus_counts_matrix_ann.txt",
+        counts = lambda wildcards: get_diff_analysis_input(config, config.get('_merge_group', False)),
     output:
         output = '06.deg_enrich/DEG_merge/Global_PCA.pdf',
         summary = '06.deg_enrich/DEG_merge/All_Contrast_Differential_Peaks_Statistics.csv',

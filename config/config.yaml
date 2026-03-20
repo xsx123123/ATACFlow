@@ -40,3 +40,12 @@ r1_suffix: _R1.fq.gz        # File suffix for R1 (forward) reads
 r2_suffix: _R2.fq.gz        # File suffix for R2 (reverse) reads
 md5: MD5.txt                # MD5 checksum filename for processed data
 pipeline_version: "ATACFlow v0.0.5"  # Pipeline version for reproducibility tracking
+
+# Peak Calling Configuration
+# Controls how peaks are called and merged for downstream analysis
+peak_calling:
+  # Use pooled (merged group) consensus peaks for DEG analysis
+  # When true: merge replicates within each group, then call peaks (more robust)
+  # When false: use single-sample consensus peaks
+  # Note: IDR analysis is still performed if group has >= 2 replicates
+  use_pooled_peaks: true

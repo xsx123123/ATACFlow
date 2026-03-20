@@ -71,7 +71,7 @@ rule ataqv_qc:
     input:
         shifted_sort_bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',
         shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai',
-        narrow_peak = "03.peak_calling/MACS2/{sample}/{sample}_peaks.narrowPeak",
+        narrow_peak = "03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak",
     output:
         json = "02.mapping/ataqv/{sample}.ataqv.json",
         log_out = "02.mapping/ataqv/{sample}.ataqv.out"
@@ -190,7 +190,7 @@ rule multiqc_macs2_samples:
     downstream differential accessibility analysis.
     """
     input:
-        xls = expand("03.peak_calling/MACS2/{sample}/{sample}_peaks.xls",sample=samples.keys())
+        xls = expand("03.peak_calling/single/{sample}/{sample}_peaks.xls",sample=samples.keys())
     output:
         report = '05.ATAC_QC/multiqc_MACS2_Samples_report.html',
     resources:
@@ -245,8 +245,8 @@ rule multiqc_macs2_group:
     valuable insights into the experiment and helps validate the analytical approach.
     """
     input:
-        xls =  expand("03.peak_calling/MACS2/{sample}/{sample}_peaks.xls",sample=samples.keys()),
-        group_xls = expand("03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.xls",group = groups.keys()),
+        xls =  expand("03.peak_calling/single/{sample}/{sample}_peaks.xls",sample=samples.keys()),
+        group_xls = expand("03.peak_calling/pooled/{group}/{group}_peaks.xls",group = groups.keys()),
     output:
         report = '05.ATAC_QC/multiqc_MACS2_Merge_report.html',
     resources:

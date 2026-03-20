@@ -1,6 +1,17 @@
 # 🧬 ATACFlow: 完整的ATAC-seq数据分析流程
 
+**版本**: v0.0.5
+
 ATACFlow是一个全面的ATAC-seq数据分析流程，涵盖了从原始数据质控到最终报告生成的完整分析过程。该流程针对植物基因组特性进行了优化，能够有效处理细胞器污染等问题。
+
+## 📜 版本更新日志
+
+### v0.0.5 (2024-03)
+- **新增**: 灵活的 Peak Calling 策略配置 (`peak_calling.use_pooled_peaks`)
+- **优化**: 重组了 peak calling 模块的输出目录结构，清晰分离单样本、pooled 和 IDR 分析
+- **优化**: 将 FRiP (Fraction of Reads in Peaks) 质控集成到流程中
+- **修复**: 修复了单样本组情况下 DEG 分析无法运行的 bug
+- **改进**: 添加了自动回退逻辑，当无法使用 pooled peaks 时自动使用单样本共识peaks
 
 ## 🌟 核心特色 (Core Highlights)
 
@@ -9,7 +20,7 @@ ATACFlow 不仅仅是一个基础的比对和 Peak Calling 流程，它集成了
 *   **高级足迹分析 (TOBIAS Footprinting)**: 集成了完整的 TOBIAS 流程（ATACorrect -> EstimateFootprints -> BINDetect），能够以单碱基分辨率推断转录因子的动态结合。
 *   **AI 驱动的自动化报告**: 利用大语言模型 (LLM) 驱动的 AI 引擎，结合容器化技术 (Apptainer/Docker)，自动生成包含生物学解读的交互式分析报告。
 *   **植物学深度优化**: 针对植物基因组中高比例的线粒体/叶绿体污染，实现了动态剔除和结构性过滤算法，最大化保留有效读段。
-*   **灵活的 Peak Calling 策略**: 默认采用 "Group Merge -> Call Peak" 策略，显著提升了生物学重复样本中弱信号 Peak 的检测灵敏度。
+*   **灵活的 Peak Calling 策略** *(v0.0.5)*: 默认采用 "Group Merge -> Call Peak" 策略，显著提升了生物学重复样本中弱信号 Peak 的检测灵敏度。支持配置化选择使用 pooled 或单样本共识peaks。
 
 ## 📋 流程概览
 
@@ -83,15 +94,21 @@ graph LR
         Shift --> BAM[Processed BAM]:::map
     end
 
-    %% 3. Peak识别 - 双路径 %%
+    %% 3. Peak识别 - 三路径 (v0.0.5更新) %%
     subgraph S3 ["Step 3: Peak Calling"]
         direction TB
-        BAM --> HasRep{Has Replicates?}:::decision
-        HasRep -->|No| SingleMACS2[Single Sample MACS2]:::core
-        HasRep -->|Yes| MergeBAM[Merge Group BAMs]:::core
+        BAM --> SinglePeaks[Single Sample MACS2]:::core
+        SinglePeaks --> IDR[IDR Analysis (if >=2 reps)]:::core
+        SinglePeaks --> SingleConsensus[Single Consensus]:::core
+        
+        BAM --> PooledPeaks{Pooled?}:::decision
+        PooledPeaks -->|Yes| MergeBAM[Merge Group BAMs]:::core
         MergeBAM --> MergeMACS2[Merged Sample MACS2]:::core
-        MergeMACS2 --> Consensus[Consensus Peaks]:::core
-        SingleMACS2 --> IndividualPeaks[Individual Peaks]:::core
+        MergeMACS2 --> PooledConsensus[Pooled Consensus]:::core
+        PooledPeaks -->|No| SingleConsensus
+        
+        SingleConsensus --> DEG[DEG Analysis]:::adv
+        PooledConsensus --> DEG
     end
 
     %% 4. 高级分析 %%
@@ -241,14 +258,30 @@ graph LR
 │   ├── Bowtie2/           # Bowtie2比对结果
 │   ├── filter_pe/         # 过滤后结果
 │   ├── shifted/           # 位移后结果
-│   └── merged/            # 合并样本结果
+│   ├── merged/            # 合并样本结果 (run_pooled=True时)
+│   └── ataqv/             # ATAC-seq质控结果
 ├── 03.peak_calling/       # Peak识别结果
-│   ├── MACS2/             # 单样本peak calling
-│   ├── MERGE_MACS2/       # 合并样本peak calling
-│   ├── HOMER/             # 单样本peak注释
-│   └── MERGE_HOMER/       # 合并样本peak注释
+│   ├── single/            # 单样本peak calling (始终运行)
+│   ├── single_HOMER/      # 单样本peak注释
+│   ├── pooled/            # 组级别pooled peak calling (run_pooled=True时)
+│   ├── pooled_HOMER/      # 组级别peak注释
+│   ├── idr/               # IDR分析 (组内>=2样本时)
+│   └── idr_HOMER/         # IDR peak注释
 ├── 04.consensus/          # 共识peak集
-├── 05.qc/                 # ATAC-seq特异性质控
+│   ├── single/            # 单样本共识 (始终运行)
+│   │   ├── all_samples_consensus_peaks.bed
+│   │   ├── consensus_peaks_annotation.txt
+│   │   ├── consensus_counts_matrix.txt
+│   │   └── consensus_counts_matrix_ann.txt
+│   └── pooled/            # 组级别共识 (run_pooled=True时)
+│       ├── all_groups_consensus_peaks.bed
+│       ├── consensus_peaks_annotation.txt
+│       ├── consensus_counts_matrix.txt
+│       └── consensus_counts_matrix_ann.txt
+├── 05.ATAC_QC/            # ATAC-seq特异性质控报告
+├── 06.deg_enrich/         # 差异分析和富集分析
+│   ├── DEG/               # 差异peak分析结果
+│   └── enrich/            # GO/KEGG富集分析
 ├── 06.motif_analysis/     # 转录因子结合位点分析
 │   ├── 01.formatted_peaks/
 │   ├── 02.signal_corrected/
@@ -257,6 +290,60 @@ graph LR
 │   ├── 05.differential_motifs/
 │   └── 06.final_report/
 └── report/                # 最终报告
+```
+
+## ⚙️ Peak Calling 策略配置 (v0.0.5 新增)
+
+ATACFlow v0.0.5 引入了灵活的 Peak Calling 策略配置，用户可以通过配置文件控制使用哪种共识peaks进行下游差异分析。
+
+### 配置选项
+
+在 `config.yaml` 中添加以下配置：
+
+```yaml
+# Peak Calling Configuration
+# 控制peaks的调用和合并方式
+peak_calling:
+  # 使用pooled (合并组) 共识peaks进行DEG分析
+  # true: 在组内合并生物学重复后调用peaks (更robust，推荐)
+  # false: 使用单样本共识peaks
+  use_pooled_peaks: true
+```
+
+### 运行逻辑
+
+| 配置 | merge_group | run_pooled | DEG分析输入 |
+|------|-------------|------------|-------------|
+| use_pooled_peaks: true | True | ✅ 运行 | `04.consensus/pooled/consensus_counts_matrix_ann.txt` |
+| use_pooled_peaks: true | False (有单样本组) | ❌ 跳过 | `04.consensus/single/consensus_counts_matrix_ann.txt` (自动回退) |
+| use_pooled_peaks: false | 任意 | ❌ 跳过 | `04.consensus/single/consensus_counts_matrix_ann.txt` |
+
+> **注意**: `merge_group` 是自动检测的变量，仅当所有实验组都有多于1个生物学重复时为 True。如果存在单样本组，系统会自动回退到单样本共识peaks。
+
+### 三种分析模式说明
+
+1. **单样本分析 (Single Sample)**: 对每个样本独立进行 peak calling，然后合并所有样本的peaks生成共识集
+
+2. **Pooled分析 (合并样本)**: 先将同一组的生物学重复样本的BAM文件合并，然后在合并后的BAM上进行peak calling
+   - 优势: 增加测序深度，提高弱信号peaks的检测灵敏度
+   - 适用于: 有多个生物学重复的实验组
+
+3. **IDR分析**: 在组内样本间进行 Irreproducible Discovery Rate 分析，识别可重复的peaks
+   - 用途: 质量控制，评估生物学重复间的一致性
+   - 注意: IDR过滤后的peaks数量可能较少，不建议用于差异分析
+
+### 推荐的配置
+
+```yaml
+# 推荐配置: 使用pooled peaks
+# 适用于: 有2个或以上生物学重复的实验
+peak_calling:
+  use_pooled_peaks: true
+
+# 替代配置: 使用单样本共识peaks
+# 适用于: 想保留更多peaks，或生物学重复较少的情况
+peak_calling:
+  use_pooled_peaks: false
 ```
 
 ## ⚙️ 配置文件
