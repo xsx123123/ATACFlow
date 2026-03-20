@@ -46,10 +46,7 @@ rule merge_shifted_bams:
     valuable for experiments with limited sequencing depth per sample.
     """
     input:
-        lambda wildcards: expand(
-            "02.mapping/shifted/{group}.shifted.sorted.bam",
-            group=groups[wildcards.group]
-        )
+        lambda wildcards: expand("02.mapping/shifted/{group}.shifted.sorted.bam",group=groups[wildcards.group])
     output:
         bam = "02.mapping/merged/{group}.merged.bam",
         bai = "02.mapping/merged/{group}.merged.bam.bai"
@@ -210,7 +207,7 @@ rule merge_create_consensus_peakset:
     input:
         peaks = expand("03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.narrowPeak", group=groups.keys())
     output:
-        consensus = "04.consensus/group_consensus_peaks.bed"
+        consensus = "04.consensus/consensus_peak/{group}_consensus_peaks.bed"
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
@@ -229,19 +226,59 @@ rule merge_create_consensus_peakset:
 
 rule merge_idr_peaks:
     """
+    Perform Irreproducible Discovery Rate (IDR) analysis on group replicates.
+
+    This rule identifies reproducible peaks across biological replicates within a group
+    using the IDR framework. It compares all pairs of replicates, identifies peaks 
+    that are consistent (IDR < 0.05), and merges them into a final consensus peakset.
+    For groups with only one replicate, it provides the original peaks (converted to 
+    3-column BED) as the consensus set for consistency.
     """
     input:
-        peak = "03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.narrowPeak"
+        peaks = lambda wildcards: expand("03.peak_calling/MACS2/{sample}/{sample}_peaks.narrowPeak",
+            sample=groups[wildcards.group]
+        )
     output:
-        idr = "03.peak_calling/MERGE_IDR/{group}/Final_Consensus_Peaks.bed"
+        idr_bed = "03.peak_calling/MERGE_IDR/{group}/Final_Consensus_Peaks.bed",
+        idr_batch_log = "03.peak_calling/MERGE_IDR/{group}/idr_batch_run.log",
+        idr_peaks = lambda wildcards: expand(
+            "03.peak_calling/MERGE_IDR/{sample}/{sample}_peaks.idr.narrowPeak",
+            sample=groups[wildcards.group]
+        )
+    resources:
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/idr.yaml"),
+    log:
+        "logs/03.peak_calling/idr_{group}.log"
+    benchmark:
+        "benchmarks/03.peak_calling/idr_{group}.txt"
+    threads:
+        config['parameter']['threads'].get('idr', 4)
     params:
-        idr_scripts =  config["parameter"]["idr_scripts"]["path"],
+        script = workflow.source_path(config["parameter"]["idr_scripts"]["path"]),
+        outdir = "03.peak_calling/MERGE_IDR/{group}"
     shell:
         """
-        python3 ./run_idr_oop.py -i Bud-1_peaks.narrowPeak Bud-2_peaks.narrowPeak Bud-3_peaks.narrowPeak \
-        -o ./Bud -t 3
+        # Ensure output directory exists
+        mkdir -p {params.outdir}
+
+        # Count number of replicates
+        peak_count=$(echo "{input.peaks}" | wc -w)
+
+        if [ "$peak_count" -ge 2 ]; then
+            echo "[$(date)] Running IDR for group {wildcards.group} with $peak_count replicates..." > {log}
+            python3 {params.script} \
+                -i {input.peaks} \
+                -o {params.outdir} \
+                -t {threads} >> {log} 2>&1
+        else
+            echo "[$(date)] Group {wildcards.group} has only one replicate. Skipping IDR and creating fallback consensus BED..." >> {log}
+            # Convert narrowPeak to 3-column BED (chr, start, end), sort and merge to ensure consistency
+            awk 'BEGIN{{OFS="\\t"}} {{print $1, $2, $3}}' {input.peaks} | \
+            sort -k1,1 -k2,2n | \
+            bedtools merge > {output.idr_bed} 2>> {log}
+        fi
         """
 
 
@@ -267,27 +304,78 @@ rule merge_homer_annotate_consensus_peaks:
     and enabling downstream functional enrichment analyses.
     """
     input:
-        consensus = "04.consensus/group_consensus_peaks.bed"
+        consensus = "04.consensus/consensus_peak/{group}_consensus_peaks.bed"
     output:
-        annotation = "04.consensus/group_consensus_peaks_annotation.txt",
-        stats = "04.consensus/group_consensus_peaks_stats.txt"
+        annotation = "04.consensus/consensus_peak/{group}_consensus_peaks_annotation.txt",
+        stats = "04.consensus/consensus_peak/{group}_consensus_peaks_stats.txt"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/03.peak_calling/group consensus_peaks.log",
+        "logs/03.peak_calling/{group}_consensus_peaks.log",
     message:
-        "Running HOMER annotation for group consensus peaks",
+        "Running HOMER annotation for {wildcards.group} consensus peaks",
     benchmark:
-        "benchmarks/03.peak_calling/group_consensus_peaks_annotation.txt",
-    threads: config['parameter']['threads']['homer']
+        "benchmarks/03.peak_calling/{group}_consensus_peaks_annotation.txt",
+    threads: 
+        config['parameter']['threads']['homer']
     params:
         gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
         genome_fasta = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
     shell:
         """
         annotatePeaks.pl {input.consensus} {params.genome_fasta} \
+            -gtf {params.gtf} \
+            -annStats {output.stats} \
+            -p {threads} > {output.annotation} 2> {log}
+        """
+
+
+rule merge_homer_annotate_idr_peaks:
+    """
+    Annotate the group-level consensus peaks relative to gene features using HOMER.
+
+    This rule provides functional annotation for the consensus peakset derived from
+    merging group-level peaks, linking accessible chromatin regions to potential
+    target genes and regulatory elements. The annotation process uses HOMER to
+    determine the genomic context of each consensus peak and its relationship to
+    known gene structures.
+
+    Key annotation information for consensus peaks includes:
+    - Genomic feature classification (promoter, exon, intron, intergenic)
+    - Distance to nearest transcription start site (TSS)
+    - Nearest gene identifiers and functional information
+    - Summary statistics of peak distribution across the genome
+
+    Annotating the consensus peakset ensures that all regions used for differential
+    accessibility analysis have consistent functional annotation, facilitating the
+    interpretation of changes in chromatin accessibility between experimental conditions
+    and enabling downstream functional enrichment analyses.
+    """
+    input:
+        idr_peaks = "03.peak_calling/MERGE_IDR/{sample}/{sample}_peaks.idr.narrowPeak",
+    output:
+        annotation = "04.consensus/idr_peak/{sample}_idr_peaks_annotation.txt",
+        stats = "04.consensus/idr_peak/{sample}_idr_peaks_stats.txt",
+    resources:
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
+    conda:
+        workflow.source_path("../envs/homer.yaml"),
+    log:
+        "logs/03.idr_calling/{sample}_consensus_peaks.log",
+    message:
+        "Running HOMER annotation for {sample} consensus peaks",
+    benchmark:
+        "benchmarks/03.peak_calling/{sample}_consensus_peaks_annotation.txt",
+    params:
+        gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
+        genome_fasta = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
+    threads: 
+        config['parameter']['threads']['homer'],
+    shell:
+        """
+        annotatePeaks.pl {input.idr_peaks} {params.genome_fasta} \
             -gtf {params.gtf} \
             -annStats {output.stats} \
             -p {threads} > {output.annotation} 2> {log}
@@ -353,13 +441,13 @@ rule merge_generate_count_matrix_by_featureCounts:
     providing a much more accurate representation of the open chromatin state.
     """
     input:
-        consensus = "04.consensus/group_consensus_peaks.bed",
+        consensus = "04.consensus/consensus_peak/{group}_consensus_peaks.bed",
         bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
     output:
-        counts_matrix = "04.consensus/merge_consensus_counts_matrix.txt",
-        description = "04.consensus/merge_matrix_description.txt",
-        summary = "04.consensus/merge_consensus_counts_matrix.txt.summary",
-        saf = temp("04.consensus/group_consensus_peaks.saf")
+        counts_matrix = "04.consensus/consensus_peak/merge_consensus_counts_matrix.txt",
+        description = "04.consensus/consensus_peak/merge_matrix_description.txt",
+        summary = "04.consensus/consensus_peak/merge_consensus_counts_matrix.txt.summary",
+        saf = temp("04.consensus/consensus_peak/{group}_consensus_peaks.saf")
     conda:
         workflow.source_path("../envs/subread.yaml"), 
     resources:
@@ -398,6 +486,58 @@ rule merge_generate_count_matrix_by_featureCounts:
         echo "Total Group Consensus Peaks: $(wc -l < {input.consensus})" >> {output.description}
         """
 
+rule count_matrix_idr_featureCounts:
+    """
+    Generate a high-confidence read count matrix using featureCounts 
+    based on the IDR-filtered consensus peakset.
+    """
+    input:
+        consensus = "idr_results/Final_Consensus_Peaks.bed",
+        bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
+    output:
+        counts_matrix = "04.consensus/idr_peak/idr_consensus_counts_matrix.txt",
+        description = "04.consensus/idr_peak/idr_matrix_description.txt",
+        summary = "04.consensus/idr_peak/idr_consensus_counts_matrix.txt.summary",
+        saf = temp("04.consensus/idr_peak/idr_consensus_peaks.saf")
+    conda:
+        workflow.source_path("../envs/subread.yaml"), 
+    resources:
+        **rule_resource(config, 'high_resource',  skip_queue_on_local=True, logger=logger),
+    log:
+        "logs/04.consensus/idr_featureCounts.log"
+    benchmark:
+        "benchmarks/04.consensus/idr_featureCounts.txt"
+    threads: 
+        config['parameter']['threads'].get('featurecounts', 16)
+    shell:
+        """
+        echo "1. Converting IDR consensus BED to SAF format..." > {log}
+        # 注意这里 awk 把原来的名称列改成了坐标拼接，保证 featureCounts 出来的 GeneID 是独一无二的
+        awk 'BEGIN{{OFS="\\t"; print "GeneID\\tChr\\tStart\\tEnd\\tStrand"}} \
+            {{print $1":"$2"-"$3, $1, $2, $3, "+"}}' {input.consensus} > {output.saf}
+
+        echo "2. Running featureCounts for ATAC-seq PE fragments..." >> {log}
+        featureCounts \
+            -p \
+            -B \
+            -C \
+            -T {threads} \
+            -F SAF \
+            -a {output.saf} \
+            -o {output.counts_matrix} \
+            {input.bams} >> {log} 2>&1
+            
+        echo "3. Cleaning up matrix header for downstream compatibility..." >> {log}
+        sed -i 's|02.mapping/shifted/||g; s|.shifted.sorted.bam||g' {output.counts_matrix}
+
+        echo "4. Generating description file..." >> {log}
+        echo "File Name: $(basename {output.counts_matrix})" > {output.description}
+        echo "Generated Date: $(date +'%Y-%m-%d %H:%M:%S')" >> {output.description}
+        echo "--------------------------------------------------" >> {output.description}
+        echo "Total Samples Quantified: $(echo "{input.bams}" | wc -w)" >> {output.description}
+        echo "Total IDR Consensus Peaks: $(wc -l < {input.consensus})" >> {output.description}
+        """
+
 rule merge_generate_count_matrix_ann:
     """
     Add gene annotation information to the group-level count matrix.
@@ -420,10 +560,10 @@ rule merge_generate_count_matrix_ann:
     effects and functional pathways.
     """
     input:
-        annotation = "04.consensus/group_consensus_peaks_annotation.txt",
-        counts_matrix = "04.consensus/merge_consensus_counts_matrix.txt",
+        annotation = "04.consensus/consensus_peak/{group}_consensus_peaks_annotation.txt",
+        counts_matrix = "04.consensus/consensus_peak/merge_consensus_counts_matrix..txt",
     output:
-        counts_matrix_ann = "04.consensus/merge_consensus_counts_matrix_ann.txt",
+        counts_matrix_ann = "04.consensus/consensus_peak/merge_consensus_counts_matrix_ann.txt",
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
     resources:

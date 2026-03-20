@@ -110,7 +110,7 @@ rule create_consensus_peakset:
     input:
         peaks = expand("03.peak_calling/MACS2/{sample}/{sample}_peaks.narrowPeak", sample=samples.keys())
     output:
-        consensus = "04.consensus/consensus_peaks.bed"
+        consensus = "04.consensus/merge_single/merge_peaks.bed"
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
@@ -135,10 +135,10 @@ rule homer_annotate_consensus_peaks:
     Annotate peaks relative to gene features using HOMER.
     """
     input:
-        consensus = "04.consensus/consensus_peaks.bed"
+        consensus = "04.consensus/merge_single/merge_peaks.bed"
     output:
-        annotation = "04.consensus/consensus_peaks_annotation.txt",
-        stats = "04.consensus/consensus_peaks_stats.txt"
+        annotation = "04.consensus/merge_single/merge_peaks_annotation.txt",
+        stats = "04.consensus/merge_single/merge_peaks_stats.txt"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
@@ -199,16 +199,13 @@ rule generate_count_matrix_by_featureCounts:
     the standard and most accurate quantification method for ATAC-seq.
     """
     input:
-        consensus = "04.consensus/consensus_peaks.bed",
+        consensus = "04.consensus/merge_single/merge_peaks.bed",
         bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
     output:
-        counts_matrix = "04.consensus/consensus_counts_matrix.txt",
-        # 保留原有的 description 输出，防止 Snakemake 报错
-        description = "04.consensus/matrix_description.txt",
-        # 捕获 featureCounts 默认生成的比对统计报告
-        summary = "04.consensus/consensus_counts_matrix.txt.summary",
-        # 临时生成的 SAF 文件，用完自动删除
-        saf = temp("04.consensus/consensus_peaks.saf") 
+        counts_matrix = "04.consensus/merge_single/merge_counts_matrix.txt",
+        description = "04.consensus/merge_single/merge_matrix_description.txt",
+        summary = "04.consensus/merge_single/merge_counts_matrix.txt.summary",
+        saf = temp("04.consensus/merge_single/merge_peaks.saf") 
     conda:
         workflow.source_path("../envs/subread.yaml"), # 确保你的环境中安装了 subread 包
     log:
@@ -247,14 +244,12 @@ rule generate_count_matrix_by_featureCounts:
         echo "Total Consensus Peaks: $(wc -l < {input.consensus})" >> {output.description}
         """
 
-
-
 rule generate_count_matrix_ann:
     input:
-        annotation = "04.consensus/consensus_peaks_annotation.txt",
-        counts_matrix = "04.consensus/consensus_counts_matrix.txt",
+        annotation = "04.consensus/merge_single/merge_peaks_annotation.txt",
+        counts_matrix = "04.consensus/merge_single/merge_counts_matrix.txt",
     output:
-        counts_matrix_ann = "04.consensus/consensus_counts_matrix_ann.txt",
+        counts_matrix_ann = "04.consensus/merge_single/consensus_counts_matrix_ann.txt",
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
     resources:

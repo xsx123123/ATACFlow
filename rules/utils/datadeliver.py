@@ -298,6 +298,13 @@ def merge_group_analysis(groups: Dict = None, data_deliver: List = None) -> List
     data_deliver.extend(
         expand("03.peak_calling/MERGE_HOMER/{group}_stats.txt", group=groups.keys())
     )
+    # idr
+    data_deliver.extend("04.consensus/{sample}_idr_peaks_annotation.txt",sample=samples.keys())
+    data_deliver.extend("04.consensus/{sample}_idr_peaks_stats.txt",sample=samples.keys())
+    data_deliver.extend("03.peak_calling/MERGE_IDR/{sample}/{sample}_peaks.idr.narrowPeak",group=samples.keys())
+    # consensus
+
+    # merge matrix
     data_deliver.append("04.consensus/merge_matrix_description.txt")
     data_deliver.append("04.consensus/merge_consensus_counts_matrix.txt")
     data_deliver.append("04.consensus/merge_consensus_counts_matrix_ann.txt")
