@@ -36,8 +36,10 @@ rule atac_seq_shift:
         shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai'
     log:
         "logs/02.mapping/atac_seq_shift_{sample}.log"
+    resources:
+        **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     threads:
-        20
+        1
     shell:
         """
         (ln -s -r {input.bam} {output.shifted_sort_bam}

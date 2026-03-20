@@ -22,6 +22,8 @@ rule tobias_format_bed:
         "Formatting peak BED file for {wildcards.group} TOBIAS analysis",
     benchmark:
         "benchmarks/06.motif_analysis/tobias_format_bed_{group}.txt",
+    threads:
+        1
     shell:
         """
         mkdir -p $(dirname {output.formatted_bed})
@@ -49,7 +51,7 @@ rule tobias_ata_correct:
         bigwig = "06.motif_analysis/02.signal_corrected/{group}_corrected.bw",
         stats = "06.motif_analysis/02.signal_corrected/{group}_atacorrect_stats.txt"
     resources:
-        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
@@ -60,6 +62,8 @@ rule tobias_ata_correct:
         "benchmarks/06.motif_analysis/tobias_ata_correct_{group}.txt",
     params:
         outdir = "06.motif_analysis/02.signal_corrected"
+    threads:
+        1
     shell:
         """
         mkdir -p {params.outdir}
@@ -84,7 +88,7 @@ rule tobias_estimate_footprints:
         footprints = "06.motif_analysis/03.footprints/{group}_footprints.bw",
         occurrences = "06.motif_analysis/03.footprints/{group}_occurrences.bed"
     resources:
-        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
@@ -95,6 +99,8 @@ rule tobias_estimate_footprints:
         "benchmarks/06.motif_analysis/tobias_estimate_footprints_{group}.txt",
     params:
         outdir = "06.motif_analysis/03.footprints"
+    threads:
+        1
     shell:
         """
         mkdir -p {params.outdir}
@@ -126,6 +132,8 @@ rule download_jaspar_motifs:
         "benchmarks/06.motif_analysis/download_jaspar_motifs.txt",
     params:
         url = "https://jaspar.genereg.net/download/data/2024/CORE/JASPAR2024_CORE_vertebrates_non-redundant_pfms_jaspar.txt"
+    threads:
+        1
     shell:
         """
         mkdir -p $(dirname {output.motifs})
@@ -156,6 +164,8 @@ rule tobias_bindetect:
         "benchmarks/06.motif_analysis/tobias_bindetect_{group}.txt",
     params:
         outdir = "06.motif_analysis/04.bindetect/{group}"
+    threads:
+        1
     shell:
         """
         mkdir -p {params.outdir}
@@ -186,6 +196,8 @@ rule tobias_complete_analysis:
         "logs/06.motif_analysis/tobias_complete_analysis.log",
     message:
         "Completing TOBIAS motif analysis for all groups",
+    threads:
+        1
     shell:
         """
         echo "TOBIAS motif analysis completed for all groups:" > {output.report}
@@ -207,7 +219,7 @@ rule tobias_create_network:
         heatmap = "06.motif_analysis/05.differential_motifs/{comparison}_heatmap.pdf",
         barplot = "06.motif_analysis/05.differential_motifs/{comparison}_barplot.pdf"
     resources:
-        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
@@ -219,6 +231,8 @@ rule tobias_create_network:
     params:
         outdir = "06.motif_analysis/05.differential_motifs/{comparison}_network",
         prefix = "{comparison}"
+    threads:
+        1
     shell:
         """
         mkdir -p $(dirname {output.network_dir})
@@ -243,7 +257,7 @@ rule tobias_create_network:
         fi
         """
 
-# 新增：成对组比较规则
+
 rule tobias_pairwise_comparison:
     """
     Perform pairwise comparison of TF binding between two specific groups
@@ -268,6 +282,8 @@ rule tobias_pairwise_comparison:
     params:
         outdir = "06.motif_analysis/05.differential_motifs/{contrast}_vs_{treatment}",
         prefix = "{contrast}_vs_{treatment}"
+    threads:
+        1
     shell:
         """
         mkdir -p {params.outdir}
@@ -303,7 +319,7 @@ rule tobias_contrast_comparison:
         volcano_plot = "06.motif_analysis/05.differential_motifs/{contrast}_vs_{treatment}/volcano_plot.pdf",
         ma_plot = "06.motif_analysis/05.differential_motifs/{contrast}_vs_{treatment}/ma_plot.pdf"
     resources:
-        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
@@ -315,6 +331,8 @@ rule tobias_contrast_comparison:
     params:
         outdir = "06.motif_analysis/05.differential_motifs/{contrast}_vs_{treatment}",
         prefix = "{contrast}_vs_{treatment}"
+    threads:
+        1
     shell:
         """
         mkdir -p {params.outdir}
@@ -361,6 +379,8 @@ rule tobias_differential_analysis_report:
         "benchmarks/06.motif_analysis/tobias_differential_analysis_report.txt",
     params:
         outdir = "06.motif_analysis/06.final_report"
+    threads:
+        1
     shell:
         """
         mkdir -p {params.outdir}

@@ -344,6 +344,8 @@ rule merge_generate_count_matrix_by_featureCounts:
         saf = temp("04.consensus/group_consensus_peaks.saf")
     conda:
         workflow.source_path("../envs/subread.yaml"), 
+    resources:
+        **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
     log:
         "logs/04.consensus/merge_featureCounts.log"
     benchmark:
@@ -410,6 +412,8 @@ rule merge_generate_count_matrix_ann:
         counts_matrix_ann = "04.consensus/merge_consensus_counts_matrix_ann.txt",
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
+    resources:
+        **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     log:
         "logs/04.consensus/consensus_counts_matrix_ann.log",
     benchmark:

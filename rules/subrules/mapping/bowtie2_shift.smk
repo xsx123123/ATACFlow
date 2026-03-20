@@ -37,6 +37,8 @@ rule atac_seq_shift:
         shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai'
     log:
         "logs/02.mapping/atac_seq_shift_{sample}.log"
+    resources:
+        **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
     conda:
         workflow.source_path("../envs/deeptools.yaml")
     threads:

@@ -487,7 +487,10 @@ rule tss_enrichment_analysis:
         "logs/02.mapping/tss_enrichment_{sample}.log"
     conda:
         workflow.source_path("../envs/deeptools.yaml"),
-    threads: 20
+    resources:
+        **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
+    threads: 
+        20
     shell:
         """
         # Compute matrix around TSS

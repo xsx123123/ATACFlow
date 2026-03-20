@@ -145,7 +145,9 @@ rule merge_Enrichments:
         lib_type = config['parameter']['Enrichments']['lib_type'],
         gene_regex = config['parameter']['Enrichments']['gene_regex'],
         deg_dir = "06.deg_enrich/DEG_merge",
-        cutoff = config['parameter']['Enrichments'].get('cutoff', 0.05)
+        cutoff = config['parameter']['Enrichments'].get('cutoff', 0.05),
+    threads:
+        1
     shell:
         """
         python {params.wrapper} \

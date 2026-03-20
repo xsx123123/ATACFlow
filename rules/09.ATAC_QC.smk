@@ -78,7 +78,7 @@ rule ataqv_qc:
     conda:
         workflow.source_path("../envs/ataqv.yaml"),
     resources:
-        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
+        **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
         "logs/05.qc/ataqv/{sample}.ataqv.log",
     message:
@@ -88,6 +88,8 @@ rule ataqv_qc:
         autosomes = config['Bowtie2_index'][config['Genome_Version']]['autosomes'],
         mito_name = lambda wildcards:get_organelle_filter_expr(wildcards),
         organism = config['species']
+    threads:
+        1
     shell:
         """
         ataqv \
@@ -131,8 +133,6 @@ rule multiqc_ATAC_QC:
     input:
         json = expand("02.mapping/ataqv/{sample}.ataqv.json",sample=samples.keys()),
         log_out = expand("02.mapping/ataqv/{sample}.ataqv.out",sample=samples.keys()),
-        # preseq = expand('02.mapping/preseq/{sample}.lc_extrap.txt',sample=samples.keys()),
-        # c_curve = expand('02.mapping/preseq/{sample}.c_curve.txt',sample=samples.keys()),
         samtools_flagstat = expand('02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv',sample=samples.keys()),
         samtools_stats = expand('02.mapping/samtools_stats/{sample}_bam_stats.tsv',sample=samples.keys()),
     output:

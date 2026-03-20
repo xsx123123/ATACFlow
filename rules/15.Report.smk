@@ -59,7 +59,9 @@ rule generate_docker_json:
         species = config["species"],
         Genome_Version = config["Genome_Version"], 
         pipeline_version = config["pipeline_version"],
-        docker_prefix = "/data"
+        docker_prefix = "/data",
+    threads:
+        1
     run:
         import pandas as pd
         import datetime  

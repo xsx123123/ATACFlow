@@ -215,6 +215,8 @@ rule generate_count_matrix_by_featureCounts:
         "logs/04.consensus/featureCounts.log"
     benchmark:
         "benchmarks/04.consensus/featureCounts.txt"
+    resources:
+        **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
     threads: 
         config['parameter']['threads'].get('featurecounts', 16)
     shell:
@@ -262,6 +264,8 @@ rule generate_count_matrix_ann:
         counts_matrix_ann = "04.consensus/consensus_counts_matrix_ann.txt",
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
+    resources:
+        **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     log:
         "logs/04.consensus/consensus_counts_matrix_ann.log",
     benchmark:

@@ -139,6 +139,8 @@ rule Enrichments:
         lib_type = config['parameter']['Enrichments']['lib_type'],
         deg_dir = "06.deg_enrich/DEG",
         cutoff = config['parameter']['Enrichments'].get('cutoff', 0.05)
+    threads:
+        1
     shell:
         """
         python {params.wrapper} \

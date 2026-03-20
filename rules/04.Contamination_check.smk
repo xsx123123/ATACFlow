@@ -24,6 +24,8 @@ rule generate_fastq_screen_conf:
         conf = "01.qc/fastq_screen.conf"
     params:
         db_path = config.get("fastq_screen_db_path", "/data/jzhang/reference/"),
+    resources:
+        **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     log:
         "logs/01.qc/generate_fastq_screen_conf.log",
     benchmark:
