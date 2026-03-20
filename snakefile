@@ -9,7 +9,7 @@ from snakemake.utils import min_version, validate
 
 # ------- Import Custom Modules ------- #
 from rules.utils.id_convert import load_samples, load_contrasts,parse_groups
-from rules.utils.validate import check_reference_paths,load_user_config,validate_genome_version
+from rules.utils.validate import check_reference_paths,load_user_config,validate_genome_version,validate_species
 from rules.utils.reference_update import resolve_reference_paths
 from rules.utils.resource_manager import rule_resource
 
@@ -39,6 +39,8 @@ check_reference_paths(config.get("STAR_index", {}))
 from snakemake_logger_plugin_rich_loguru import get_analysis_logger
 logger = get_analysis_logger()
 validate_genome_version(config=config, logger=logger)
+# Check analysis config species
+validate_species(config=config, logger=logger)
 # --------- 3. Workspaces & Samples --------- #
 workdir: config["workflow"]
 merge_group,samples = load_samples(config["sample_csv"], required_cols=["sample", "sample_name", "group"],logger = logger)

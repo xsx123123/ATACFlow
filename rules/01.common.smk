@@ -24,6 +24,7 @@ from utils.datadeliver import (
     consensus_peaks, diff_peaks, merge_group_analysis, atac_qc
 )
 
+
 from utils.common import (
     DataDeliver,
     ReportData,

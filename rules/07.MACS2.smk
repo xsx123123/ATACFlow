@@ -222,15 +222,10 @@ rule generate_count_matrix_by_featureCounts:
     shell:
         """
         echo "1. Converting consensus BED to SAF format..." > {log}
-        # 使用 awk 快速将 BED 转换为 SAF (ID, Chr, Start, End, Strand)
         awk 'BEGIN{{OFS="\\t"; print "GeneID\\tChr\\tStart\\tEnd\\tStrand"}} \
             {{print $1":"$2"-"$3, $1, $2, $3, "+"}}' {input.consensus} > {output.saf}
 
         echo "2. Running featureCounts for ATAC-seq PE fragments..." >> {log}
-        # 核心计数命令
-        # -p: 识别为双端测序并计算整个 fragment
-        # -B: 仅保留两端都比对上的 fragments
-        # -C: 过滤掉跨染色体的嵌合体噪音
         featureCounts \
             -p \
             -B \
@@ -242,11 +237,9 @@ rule generate_count_matrix_by_featureCounts:
             {input.bams} >> {log} 2>&1
             
         echo "3. Cleaning up matrix header for downstream R compatibility..." >> {log}
-        # 裁掉列名中的 BAM 路径和后缀，只保留纯净的 Sample Name，防止下游合并报错
         sed -i 's|02.mapping/shifted/||g; s|.shifted.sorted.bam||g' {output.counts_matrix}
 
         echo "4. Generating description file..." >> {log}
-        # 用 Bash 原生命令生成轻量级的描述文件，满足原流程的 output 检查
         echo "File Name: $(basename {output.counts_matrix})" > {output.description}
         echo "Generated Date: $(date +'%Y-%m-%d %H:%M:%S')" >> {output.description}
         echo "--------------------------------------------------" >> {output.description}

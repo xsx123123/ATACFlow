@@ -175,3 +175,48 @@ def validate_genome_version(config: Dict[str, Any], logger = None) -> str:
                f"Supported versions are: {allowed_list}")
         logger.error(msg)
         raise ValueError(msg)
+
+    def validate_species(config: Dict[str, Any], logger=None) -> str:
+    """
+    验证 config 中的 'species' 字符串是否合法（ataqv 要求不能含有空格）。
+
+    Args:
+        config (dict): 配置字典。
+        logger: 日志对象。
+
+    Returns:
+        str: 验证后的物种名。
+
+    Raises:
+        ValueError: 如果物种名为空或包含空格。
+    """
+    if logger is None:
+        from snakemake_logger_plugin_rich_loguru import get_analysis_logger
+        logger = get_analysis_logger()
+
+    species = config.get("species")
+
+    if not species:
+        msg = "Config 缺失必要参数: 'species'。请在 config.yaml 中定义。"
+        logger.error(msg)
+        raise ValueError(msg)
+
+    # 去除首尾空格
+    clean_species = str(species).strip()
+
+    if not clean_species:
+        msg = "Config 中的 'species' 不能为空字符串。"
+        logger.error(msg)
+        raise ValueError(msg)
+
+    # 核心校验：ataqv 作为命令行位置参数，中间不能有空格
+    if " " in clean_species:
+        msg = (
+            f"Config 中的 'species' 参数 ('{clean_species}') 格式错误！"
+            f"ataqv 不允许物种名包含空格，请使用下划线代替（例如: 'Homo_sapiens' 而不是 'Homo sapiens'）。"
+        )
+        logger.error(msg)
+        raise ValueError(msg)
+
+    logger.info(f"物种名称验证通过: '{clean_species}'")
+    return clean_species

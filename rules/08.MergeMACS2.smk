@@ -355,12 +355,10 @@ rule merge_generate_count_matrix_by_featureCounts:
     shell:
         """
         echo "1. Converting GROUP consensus BED to SAF format..." > {log}
-        # 使用 awk 快速将 BED 转换为 SAF
         awk 'BEGIN{{OFS="\\t"; print "GeneID\\tChr\\tStart\\tEnd\\tStrand"}} \
             {{print $1":"$2"-"$3, $1, $2, $3, "+"}}' {input.consensus} > {output.saf}
 
         echo "2. Running featureCounts for ATAC-seq PE fragments..." >> {log}
-        # 核心定量命令
         featureCounts \
             -p \
             -B \
@@ -372,11 +370,9 @@ rule merge_generate_count_matrix_by_featureCounts:
             {input.bams} >> {log} 2>&1
             
         echo "3. Cleaning up matrix header for downstream compatibility..." >> {log}
-        # 裁掉列名中的路径和后缀，只保留纯净的 Sample Name，防止合并表头错位
         sed -i 's|02.mapping/shifted/||g; s|.shifted.sorted.bam||g' {output.counts_matrix}
 
         echo "4. Generating description file..." >> {log}
-        # 自动生成简易报告
         echo "File Name: $(basename {output.counts_matrix})" > {output.description}
         echo "Generated Date: $(date +'%Y-%m-%d %H:%M:%S')" >> {output.description}
         echo "--------------------------------------------------" >> {output.description}
