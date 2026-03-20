@@ -113,13 +113,14 @@ def DataDeliver(
 
     global _qc_warning_logged
 
+    # Use a local dictionary to track enabled modules to avoid side effects on global config
+    run_modules = {}
+
     for module in basic_modules:
-        if config.get(module) is not False:
-            config[module] = True
+        run_modules[module] = config.get(module) is not False
 
     for flag in deep_qc_flags:
-        if config.get(flag) is not False:
-            config[flag] = True
+        run_modules[flag] = config.get(flag) is not False
 
     if config.get("only_qc"):
         if not _qc_warning_logged:
@@ -142,15 +143,14 @@ def DataDeliver(
             _qc_warning_logged = True
 
         for module in downstream_modules:
-            config[module] = False
+            run_modules[module] = False
 
     else:
         for module in downstream_modules:
-            if config.get(module) is not False:
-                config[module] = True
+            run_modules[module] = config.get(module) is not False
 
     for module, func in module_functions.items():
-        if config.get(module):
+        if run_modules.get(module):
             if module == "mapping":
                 data_deliver = func(samples, data_deliver, config)
             else:
