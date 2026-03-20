@@ -303,6 +303,8 @@ rule filter_blacklist_and_mito:
     threads: 4
     conda:
         workflow.source_path("../envs/samtools.yaml")
+    resources:
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     params:
         mapq = 30,
         flag_filter = 1804,
@@ -405,6 +407,8 @@ rule filter_proper_pairs:
         "logs/02.mapping/filter_proper_pairs_{sample}.log"
     benchmark:
         "benchmarks/02.mapping/filter_proper_pairs_{sample}.txt"
+    resources:
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/samtools.yaml")
     threads: 10

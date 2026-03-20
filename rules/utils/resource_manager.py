@@ -62,6 +62,8 @@ def rule_resource(config, profile_name, skip_queue_on_local=False, logger=None):
         # 彻底移除队列参数
         profile.pop('queue', None)
         profile.pop('queue_type', None)
+        profile.pop('threads', None) 
+        profile.pop('queue_id', None)
         return profile
 
     # 5. 集群模式处理
