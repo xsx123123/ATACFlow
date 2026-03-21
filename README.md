@@ -99,15 +99,15 @@ graph LR
     subgraph S3 ["Step 3: Peak Calling"]
         direction TB
         BAM --> SinglePeaks[Single Sample MACS2]:::core
-        SinglePeaks --> IDR[IDR Analysis (if >=2 reps)]:::core
+        SinglePeaks --> IDR_Analysis[IDR Analysis (if >=2 reps)]:::core
         SinglePeaks --> SingleConsensus[Single Consensus]:::core
-        
+
         BAM --> PooledPeaks{Pooled?}:::decision
         PooledPeaks -->|Yes| MergeBAM[Merge Group BAMs]:::core
         MergeBAM --> MergeMACS2[Merged Sample MACS2]:::core
         MergeMACS2 --> PooledConsensus[Pooled Consensus]:::core
         PooledPeaks -->|No| SingleConsensus
-        
+
         SingleConsensus --> DEG[DEG Analysis]:::adv
         PooledConsensus --> DEG
     end
@@ -117,8 +117,8 @@ graph LR
         direction TB
         BAM -.-> ATACv[ATACv QC]:::adv
         MergeMACS2 -.-> TOBIAS[TOBIAS Motifs]:::adv
-        Consensus -.-> DEG_Merge["DESeq2 Merged"]:::adv
-        IndividualPeaks -.-> DEG_Single["DESeq2 Single"]:::adv
+        PooledConsensus -.-> DEG_Merge["DESeq2 Merged"]:::adv
+        SinglePeaks -.-> DEG_Single["DESeq2 Single"]:::adv
         DEG_Merge --> Enrich_Merge["GO/KEGG Enrichment Merged"]:::adv
         DEG_Single --> Enrich_Single["GO/KEGG Enrichment Single"]:::adv
     end
