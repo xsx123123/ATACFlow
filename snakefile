@@ -63,7 +63,12 @@ include: 'rules/13.Merge_qc.smk'
 include: 'rules/14.deliver.smk'
 include: 'rules/15.Report.smk'
 # --------- 5. Target Rule --------- #
+run_pooled = config['peak_calling']['use_pooled_peaks'] and merge_group
+
+config['_merge_group'] = merge_group
+config['_run_pooled'] = run_pooled
+
 rule all:
     input:
-        DataDeliver(config = config,merge_group = merge_group,groups = groups)
+        DataDeliver(config = config,merge_group = merge_group,groups = groups,run_pooled = run_pooled)
 

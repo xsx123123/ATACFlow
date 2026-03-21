@@ -1,15 +1,27 @@
 # 🧬 ATACFlow: 完整的ATAC-seq数据分析流程
 
+**版本**: v0.0.5
+
 ATACFlow是一个全面的ATAC-seq数据分析流程，涵盖了从原始数据质控到最终报告生成的完整分析过程。该流程针对植物基因组特性进行了优化，能够有效处理细胞器污染等问题。
+
+## 📜 版本更新日志
+
+### v0.0.5 (2024-03)
+- **新增**: 灵活的 Peak Calling 策略配置 (`peak_calling.use_pooled_peaks`)
+- **优化**: 重组了 peak calling 模块的输出目录结构，清晰分离单样本、pooled 和 IDR 分析
+- **优化**: 将 FRiP (Fraction of Reads in Peaks) 质控集成到流程中
+- **修复**: 修复了单样本组情况下 DEG 分析无法运行的 bug
+- **改进**: 添加了自动回退逻辑，当无法使用 pooled peaks 时自动使用单样本共识peaks
 
 ## 🌟 核心特色 (Core Highlights)
 
 ATACFlow 不仅仅是一个基础的比对和 Peak Calling 流程，它集成了多项前沿特性：
 
+*   **双引擎比对支持**: 支持 **Bowtie2** 和 **Chromap** 两种比对引擎，可通过配置文件灵活切换。**默认使用 Chromap**（专为大规模 ATAC-seq 数据优化，处理速度更快）；Bowtie2 则提供更广泛的兼容性和精细化控制。
 *   **高级足迹分析 (TOBIAS Footprinting)**: 集成了完整的 TOBIAS 流程（ATACorrect -> EstimateFootprints -> BINDetect），能够以单碱基分辨率推断转录因子的动态结合。
 *   **AI 驱动的自动化报告**: 利用大语言模型 (LLM) 驱动的 AI 引擎，结合容器化技术 (Apptainer/Docker)，自动生成包含生物学解读的交互式分析报告。
 *   **植物学深度优化**: 针对植物基因组中高比例的线粒体/叶绿体污染，实现了动态剔除和结构性过滤算法，最大化保留有效读段。
-*   **灵活的 Peak Calling 策略**: 默认采用 "Group Merge -> Call Peak" 策略，显著提升了生物学重复样本中弱信号 Peak 的检测灵敏度。
+*   **灵活的 Peak Calling 策略** *(v0.0.5)*: 默认采用 "Group Merge -> Call Peak" 策略，显著提升了生物学重复样本中弱信号 Peak 的检测灵敏度。支持配置化选择使用 pooled 或单样本共识peaks。
 
 ## 📋 流程概览
 
@@ -83,15 +95,21 @@ graph LR
         Shift --> BAM[Processed BAM]:::map
     end
 
-    %% 3. Peak识别 - 双路径 %%
+    %% 3. Peak识别 - 三路径 (v0.0.5更新) %%
     subgraph S3 ["Step 3: Peak Calling"]
         direction TB
-        BAM --> HasRep{Has Replicates?}:::decision
-        HasRep -->|No| SingleMACS2[Single Sample MACS2]:::core
-        HasRep -->|Yes| MergeBAM[Merge Group BAMs]:::core
+        BAM --> SinglePeaks[Single Sample MACS2]:::core
+        SinglePeaks --> IDR[IDR Analysis (if >=2 reps)]:::core
+        SinglePeaks --> SingleConsensus[Single Consensus]:::core
+        
+        BAM --> PooledPeaks{Pooled?}:::decision
+        PooledPeaks -->|Yes| MergeBAM[Merge Group BAMs]:::core
         MergeBAM --> MergeMACS2[Merged Sample MACS2]:::core
-        MergeMACS2 --> Consensus[Consensus Peaks]:::core
-        SingleMACS2 --> IndividualPeaks[Individual Peaks]:::core
+        MergeMACS2 --> PooledConsensus[Pooled Consensus]:::core
+        PooledPeaks -->|No| SingleConsensus
+        
+        SingleConsensus --> DEG[DEG Analysis]:::adv
+        PooledConsensus --> DEG
     end
 
     %% 4. 高级分析 %%
@@ -155,7 +173,9 @@ graph LR
 将高质量的reads比对到参考基因组，并进行严格的过滤以获得高质量的比对结果。
 
 #### 工具
-- Bowtie2: 序列比对
+- **Bowtie2** 或 **Chromap**: 序列比对（通过配置切换）
+  - Bowtie2: 经典比对工具，兼容性好，参数控制精细
+  - Chromap: 专为大规模 ATAC-seq 数据优化，处理速度更快
 - Samtools: BAM文件处理
 - 自研Rust工具: 结构性过滤
 
@@ -241,14 +261,30 @@ graph LR
 │   ├── Bowtie2/           # Bowtie2比对结果
 │   ├── filter_pe/         # 过滤后结果
 │   ├── shifted/           # 位移后结果
-│   └── merged/            # 合并样本结果
+│   ├── merged/            # 合并样本结果 (run_pooled=True时)
+│   └── ataqv/             # ATAC-seq质控结果
 ├── 03.peak_calling/       # Peak识别结果
-│   ├── MACS2/             # 单样本peak calling
-│   ├── MERGE_MACS2/       # 合并样本peak calling
-│   ├── HOMER/             # 单样本peak注释
-│   └── MERGE_HOMER/       # 合并样本peak注释
+│   ├── single/            # 单样本peak calling (始终运行)
+│   ├── single_HOMER/      # 单样本peak注释
+│   ├── pooled/            # 组级别pooled peak calling (run_pooled=True时)
+│   ├── pooled_HOMER/      # 组级别peak注释
+│   ├── idr/               # IDR分析 (组内>=2样本时)
+│   └── idr_HOMER/         # IDR peak注释
 ├── 04.consensus/          # 共识peak集
-├── 05.qc/                 # ATAC-seq特异性质控
+│   ├── single/            # 单样本共识 (始终运行)
+│   │   ├── all_samples_consensus_peaks.bed
+│   │   ├── consensus_peaks_annotation.txt
+│   │   ├── consensus_counts_matrix.txt
+│   │   └── consensus_counts_matrix_ann.txt
+│   └── pooled/            # 组级别共识 (run_pooled=True时)
+│       ├── all_groups_consensus_peaks.bed
+│       ├── consensus_peaks_annotation.txt
+│       ├── consensus_counts_matrix.txt
+│       └── consensus_counts_matrix_ann.txt
+├── 05.ATAC_QC/            # ATAC-seq特异性质控报告
+├── 06.deg_enrich/         # 差异分析和富集分析
+│   ├── DEG/               # 差异peak分析结果
+│   └── enrich/            # GO/KEGG富集分析
 ├── 06.motif_analysis/     # 转录因子结合位点分析
 │   ├── 01.formatted_peaks/
 │   ├── 02.signal_corrected/
@@ -259,14 +295,154 @@ graph LR
 └── report/                # 最终报告
 ```
 
+## ⚙️ Peak Calling 策略配置 (v0.0.5 新增)
+
+ATACFlow v0.0.5 引入了灵活的 Peak Calling 策略配置，用户可以通过配置文件控制使用哪种共识peaks进行下游差异分析。
+
+### 配置选项
+
+在 `config.yaml` 中添加以下配置：
+
+```yaml
+# Peak Calling Configuration
+# 控制peaks的调用和合并方式
+peak_calling:
+  # 使用pooled (合并组) 共识peaks进行DEG分析
+  # true: 在组内合并生物学重复后调用peaks (更robust，推荐)
+  # false: 使用单样本共识peaks
+  use_pooled_peaks: true
+```
+
+### 运行逻辑
+
+| 配置 | merge_group | run_pooled | DEG分析输入 |
+|------|-------------|------------|-------------|
+| use_pooled_peaks: true | True | ✅ 运行 | `04.consensus/pooled/consensus_counts_matrix_ann.txt` |
+| use_pooled_peaks: true | False (有单样本组) | ❌ 跳过 | `04.consensus/single/consensus_counts_matrix_ann.txt` (自动回退) |
+| use_pooled_peaks: false | 任意 | ❌ 跳过 | `04.consensus/single/consensus_counts_matrix_ann.txt` |
+
+> **注意**: `merge_group` 是自动检测的变量，仅当所有实验组都有多于1个生物学重复时为 True。如果存在单样本组，系统会自动回退到单样本共识peaks。
+
+### 三种分析模式说明
+
+1. **单样本分析 (Single Sample)**: 对每个样本独立进行 peak calling，然后合并所有样本的peaks生成共识集
+
+2. **Pooled分析 (合并样本)**: 先将同一组的生物学重复样本的BAM文件合并，然后在合并后的BAM上进行peak calling
+   - 优势: 增加测序深度，提高弱信号peaks的检测灵敏度
+   - 适用于: 有多个生物学重复的实验组
+
+3. **IDR分析**: 在组内样本间进行 Irreproducible Discovery Rate 分析，识别可重复的peaks
+   - 用途: 质量控制，评估生物学重复间的一致性
+   - 注意: IDR过滤后的peaks数量可能较少，不建议用于差异分析
+
+### 推荐的配置
+
+```yaml
+# 推荐配置: 使用pooled peaks
+# 适用于: 有2个或以上生物学重复的实验
+peak_calling:
+  use_pooled_peaks: true
+
+# 替代配置: 使用单样本共识peaks
+# 适用于: 想保留更多peaks，或生物学重复较少的情况
+peak_calling:
+  use_pooled_peaks: false
+```
+
 ## ⚙️ 配置文件
 
-流程使用多个配置文件来控制分析参数：
+流程使用多个独立的配置文件来控制不同方面的参数，这种设计使得：
+- **配置可复用**：相同物种的配置可以快速迁移到新项目
+- **参数易维护**：修改特定类型参数时只需编辑对应文件
+- **职责分离**：避免单个配置文件过于庞大
 
-- `config.yaml`: 基本配置参数
-- `reference.yaml`: 参考基因组路径配置
-- `run_parameter.yaml`: 软件运行参数
-- `cluster_config.yaml`: 集群资源配置
+### 配置文件说明
+
+| 文件 | 作用 | 主要内容 |
+|------|------|----------|
+| `config.yaml` | 主配置文件 | 流程控制开关、输出设置、Peak Calling策略 |
+| `reference.yaml` | 参考基因组配置 | 基因组索引路径、GTF、GFF、染色体信息等 |
+| `run_parameter.yaml` | 运行时参数 | 线程数、软件参数、脚本路径、阈值设置 |
+| `cluster_config.yaml` | 集群配置 | 集群队列、资源限制、任务调度参数 |
+
+#### config.yaml - 主配置文件
+
+控制流程的整体行为和开关：
+
+```yaml
+# Pipeline Control Flags
+print_target: false     # 调试模式：打印目标文件列表
+print_sample: false     # 调试模式：打印样本信息
+log_level: INFO         # 日志级别
+bam_remove: true        # 是否清理中间BAM文件
+only_qc: false          # 仅运行QC分析（跳过差异分析）
+
+# 比对工具选择 (v0.0.5)
+mapping_tools: bowtie2   # 可选: bowtie2 (经典、精细控制), chromap (快速、大规模优化)
+
+# Peak Calling 配置 (v0.0.5新增)
+peak_calling:
+  use_pooled_peaks: true  # 使用pooled peaks进行DEG分析
+```
+
+#### reference.yaml - 参考基因组配置
+
+使用独立的 index 目录配置，便于索引的快速迁移：
+
+```yaml
+# 示例：人类基因组配置
+hg38:
+  index: /path/to/bowtie2/hg38  # 基因组索引目录
+  genome_fa: /path/to/genome/hg38.fa
+  genome_gtf: /path/to/annotation/genes.gtf
+  # ... 其他物种特异文件
+```
+
+> **设计思路**：将索引路径集中配置在 reference.yaml 中，当需要迁移到新服务器或新项目时，只需修改此文件即可，无需修改代码或重新构建索引。
+
+#### run_parameter.yaml - 运行时参数
+
+包含所有软件运行时的可调整参数，可通过修改此文件快速调整分析行为：
+
+```yaml
+parameter:
+  threads:
+    macs2: 8              # MACS2线程数
+    homer: 10             # HOMER线程数
+    featurecounts: 16     # featureCounts线程数
+  macs2:
+    qvalue: 0.05          # PeakCalling显著性阈值
+  DEG:
+    LFC: 1                # 差异分析log2FoldChange阈值
+    PVAL: 0.05            # 差异分析p值阈值
+  # ... 更多参数
+```
+
+#### cluster_config.yaml - 集群配置
+
+适配不同集群环境的资源配置：
+
+```yaml
+__default__:
+  threads: 8
+  memory: 16G
+  queue: default
+  time: "7-0:00:00"
+
+macs2:
+  threads: 4
+  memory: 32G
+  queue: fast
+  time: "2-0:00:00"
+```
+
+### 配置文件加载顺序
+
+Snakemake 按以下顺序加载配置文件（后者覆盖前者）：
+
+1. `config.yaml` → 2. `reference.yaml` → 3. `run_parameter.yaml` → 4. `cluster_config.yaml`
+
+可通过 `--config` 参数在命令行覆盖：
 
 ## 🧠 流程设计哲学
 
@@ -311,7 +487,221 @@ ATACFlow遵循以下设计理念：
 
 ## 🚀 使用方法
 
+### 1. 环境要求
+
+- Python >= 3.10
+- Snakemake >= 9.9.0
+- Mamba (推荐) 或 Conda
+
+### 2. 配置文件准备
+
+#### 2.1 创建样本信息表
+
+创建 CSV 文件，包含以下列：
+
+```csv
+sample,sample_name,group,fq1,fq2
+SRR001,WT_Rep1,WT,/path/to/SRR001_R1.fastq.gz,/path/to/SRR001_R2.fastq.gz
+SRR002,WT_Rep2,WT,/path/to/SRR002_R1.fastq.gz,/path/to/SRR002_R2.fastq.gz
+SRR003,Mut_Rep1,Mut,/path/to/SRR003_R1.fastq.gz,/path/to/SRR003_R2.fastq.gz
+SRR004,Mut_Rep2,Mut,/path/to/SRR004_R1.fastq.gz,/path/to/SRR004_R2.fastq.gz
+```
+
+#### 2.2 创建对比组配置
+
+创建 contrasts.csv 文件：
+
+```csv
+contrast,treatment
+WT,Mut
+```
+
+#### 2.3 修改主配置文件
+
+编辑 `config/config.yaml`：
+
+```yaml
+project_name: 'Your_Project_Name'
+Genome_Version: "hg38"  # 或其他支持的基因组
+species: 'Homo sapiens'
+client: 'Your_Lab_Name'
+
+# 数据路径
+raw_data_path:
+  - /path/to/raw_data
+sample_csv: /path/to/samples.csv
+paired_csv: /path/to/contrasts.csv
+
+# 工作目录和输出目录
+workflow: /path/to/workflow_dir
+data_deliver: /path/to/output_dir
+
+# 比对工具设置 (v0.0.5)
+# 默认使用 chromap（快速、适合大规模数据）
+# 如需更精细的控制或兼容性，可改为 bowtie2
+mapping_tools: chromap  # 可选: chromap (默认), bowtie2
+
+# Peak Calling 策略 (v0.0.5)
+peak_calling:
+  use_pooled_peaks: true  # true: 使用 pooled peaks, false: 使用单样本共识
+```
+
+#### 2.4 检查参考基因组配置
+
+确认 `config/reference.yaml` 中包含您的基因组配置：
+
+```yaml
+Bowtie2_index:
+  hg38:
+    index: path/to/hg38_index
+    genome_fa: path/to/hg38.fa
+    genome_gtf: path/to/hg38.gtf
+    # ... 其他路径
+```
+
+### 3. 运行流程
+
+#### 3.1 标准运行（本地）
+
 ```bash
-# 运行完整分析流程
-snakemake --cores=60 -p --conda-frontend mamba --use-conda --rerun-triggers mtime  --logger rich-loguru --config analysisyaml=/data/jzhang/project/Temp/atac_human_PRJNA427322/01.workflow/config.yaml
+cd /home/zj/pipeline/ATACFlow
+
+snakemake --cores=80 \
+  -p \
+  --conda-frontend mamba \
+  --use-conda \
+  --rerun-triggers mtime \
+  --logger rich-loguru \
+  --config analysisyaml=/path/to/your/config.yaml
+```
+
+**参数说明：**
+- `--cores=80`: 使用的 CPU 核心数，根据服务器配置调整
+- `-p`: 打印执行的 shell 命令
+- `--conda-frontend mamba`: 使用 mamba 作为 conda 前端（比 conda 更快）
+- `--use-conda`: 自动管理软件依赖
+- `--rerun-triggers mtime`: 基于文件修改时间决定是否重新运行
+- `--logger rich-loguru`: 使用美观的日志输出
+- `--config analysisyaml=...`: 指定分析配置文件
+
+#### 3.2 指定目标运行（仅运行特定步骤）
+
+```bash
+# 仅运行质控
+snakemake --cores=20 --use-conda 01.qc/short_read_qc_r1
+
+# 仅运行 peak calling
+snakemake --cores=40 --use-conda 03.peak_calling
+
+# 仅运行差异分析
+snakemake --cores=20 --use-conda 06.deg_enrich
+```
+
+#### 3.3 集群环境运行
+
+修改 `config/config.yaml` 中的 `execution_mode` 为 `cluster`，然后：
+
+```bash
+snakemake --cores=1000 \
+  --jobs=200 \
+  --cluster-config config/cluster_config.yaml \
+  --cluster "sbatch -n {threads} -c {threads} -m {cluster.memory} -p {cluster.queue}" \
+  --use-conda \
+  --config analysisyaml=/path/to/your/config.yaml
+```
+
+#### 3.4 调试模式
+
+```bash
+# 查看将要执行的任务而不实际运行
+snakemake --cores=1 --dry-run --use-conda
+
+# 打印 DAG 图
+snakemake --dag | dot -Tsvg > workflow.svg
+```
+
+### 4. 检查结果
+
+#### 4.1 查看日志
+
+```bash
+# 查看特定步骤的日志
+cat logs/03.peak_calling/single/macs2_SRR001.log
+
+# 查看完整日志
+tail -f .snakemake/log/*.log
+```
+
+#### 4.2 查看 MultiQC 报告
+
+流程完成后，在 `01.qc/` 或 `05.ATAC_QC/` 目录下查看 `multiqc_report.html`
+
+#### 4.3 检查交付结果
+
+```bash
+ls -lh /path/to/output_dir/
+```
+
+### 5. 常见问题
+
+**Q: 如何使用不同的比对工具？**
+
+A: 在 `config/config.yaml` 中设置：
+```yaml
+mapping_tools: chromap  # 可选: chromap, bowtie2
+```
+
+**Q: 如何只运行 QC 不运行差异分析？**
+
+A: 在 `config/config.yaml` 中设置：
+```yaml
+only_qc: true
+```
+
+**Q: 如何跳过 FastQ Screen？**
+
+A: 在 `config/config.yaml` 中设置：
+```yaml
+fastq_screen: false
+```
+
+**Q: Peak calling 参数如何调整？**
+
+A: 在 `config/run_parameter.yaml` 中修改：
+```yaml
+parameter:
+  macs2:
+    qvalue: 0.01  # 更严格的 qvalue
+  DEG:
+    LFC: 1.5     # 更高的 log2FoldChange 阈值
+    PVAL: 0.01    # 更严格的 pvalue 阈值
+```
+
+### 6. 示例完整命令
+
+```bash
+# 示例 1: 人源 ATAC-seq 数据完整分析
+snakemake --cores=80 \
+  -p \
+  --conda-frontend mamba \
+  --use-conda \
+  --rerun-triggers mtime \
+  --logger rich-loguru \
+  --config analysisyaml=/data/jzhang/project/Temp/atac_human_PRJNA427322/01.workflow/config.yaml
+
+# 示例 2: 植物 ATAC-seq 数据分析
+snakemake --cores=60 \
+  -p \
+  --conda-frontend mamba \
+  --use-conda \
+  --rerun-triggers mtime \
+  --logger rich-loguru \
+  --config analysisyaml=/data/jzhang/project/Temp/lettuce_v11_analysis/01.workflow/config.yaml
+
+# 示例 3: 仅运行 QC（快速测试）
+snakemake --cores=20 \
+  -p \
+  --use-conda \
+  --config analysisyaml=/path/to/config.yaml \
+  01.qc/
 ```

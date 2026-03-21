@@ -8,7 +8,7 @@ rule tobias_format_bed:
     Format merged peak BED files for TOBIAS footprinting analysis
     """
     input:
-        peaks = "03.peak_calling/MERGE_MACS2/{group}/{group}_peaks.narrowPeak",
+        peaks = "03.peak_calling/pooled/{group}/{group}_peaks.narrowPeak",
         genome_fa = lambda wildcards: config['Bowtie2_index'][config['Genome_Version']]['genome_fa']
     output:
         formatted_bed = "06.motif_analysis/01.formatted_peaks/{group}_peaks_formatted.bed"

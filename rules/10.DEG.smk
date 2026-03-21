@@ -20,13 +20,16 @@ changes in gene expression and cellular phenotype.
 
 rule DEG:
     """
-    Perform differential accessibility analysis using DESeq2 on the consensus peakset.
+    Perform differential accessibility analysis using DESeq2 on the pooled consensus peakset.
 
     This rule identifies chromatin regions that show statistically significant differences
     in accessibility between experimental conditions using DESeq2, a powerful tool for
     differential analysis of count data. DESeq2 models count data using a negative
     binomial distribution, providing robust statistical inference even with small
     numbers of biological replicates.
+
+    Uses GROUP-LEVEL POOLED consensus peaks to ensure sufficient coverage for
+    statistical analysis. IDR-filtered peaks are too sparse for differential analysis.
 
     Key steps in the differential accessibility analysis:
     - Normalization of read counts across samples
@@ -53,7 +56,7 @@ rule DEG:
     with the biological processes under investigation.
     """
     input:
-        counts = "04.consensus/consensus_counts_matrix_ann.txt",
+        counts = lambda wildcards: get_diff_analysis_input(config, config.get('_merge_group', False)),
     output:
         output = '06.deg_enrich/DEG/Global_PCA.pdf',
         summary = '06.deg_enrich/DEG/All_Contrast_Differential_Peaks_Statistics.csv',

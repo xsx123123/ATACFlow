@@ -176,7 +176,7 @@ def validate_genome_version(config: Dict[str, Any], logger = None) -> str:
         logger.error(msg)
         raise ValueError(msg)
 
-    def validate_species(config: Dict[str, Any], logger=None) -> str:
+def validate_species(config: Dict[str, Any], logger=None) -> str:
     """
     Validate if the 'species' string in config is valid (ataqv requires no spaces).
 
