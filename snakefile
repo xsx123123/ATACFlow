@@ -63,10 +63,7 @@ include: 'rules/13.Merge_qc.smk'
 include: 'rules/14.deliver.smk'
 include: 'rules/15.Report.smk'
 # --------- 5. Target Rule --------- #
-# Determine if we should run pooled analysis (all groups have replicates)
-peak_calling_cfg = config.get('peak_calling', {})
-use_pooled = peak_calling_cfg.get('use_pooled_peaks', True) if isinstance(peak_calling_cfg, dict) else False
-run_pooled = use_pooled and merge_group
+run_pooled = config['peak_calling']['use_pooled_peaks'] and merge_group
 
 config['_merge_group'] = merge_group
 config['_run_pooled'] = run_pooled
