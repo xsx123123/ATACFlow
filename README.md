@@ -99,7 +99,7 @@ graph LR
     subgraph S3 ["Step 3: Peak Calling"]
         direction TB
         BAM --> SinglePeaks[Single Sample MACS2]:::core
-        SinglePeaks --> IDR_Analysis[IDR Analysis (if >=2 reps)]:::core
+        SinglePeaks --> IDRAnalysis[IDR Analysis if ge 2 reps]:::core
         SinglePeaks --> SingleConsensus[Single Consensus]:::core
 
         BAM --> PooledPeaks{Pooled?}:::decision
@@ -117,10 +117,10 @@ graph LR
         direction TB
         BAM -.-> ATACv[ATACv QC]:::adv
         MergeMACS2 -.-> TOBIAS[TOBIAS Motifs]:::adv
-        PooledConsensus -.-> DEG_Merge["DESeq2 Merged"]:::adv
-        SinglePeaks -.-> DEG_Single["DESeq2 Single"]:::adv
-        DEG_Merge --> Enrich_Merge["GO/KEGG Enrichment Merged"]:::adv
-        DEG_Single --> Enrich_Single["GO/KEGG Enrichment Single"]:::adv
+        PooledConsensus -.-> DEGMerge[DESeq2 Merged]:::adv
+        SinglePeaks -.-> DEGSingle[DESeq2 Single]:::adv
+        DEGMerge --> EnrichMerge[GO KEGG Enrichment Merged]:::adv
+        DEGSingle --> EnrichSingle[GO KEGG Enrichment Single]:::adv
     end
 
     %% 5. 交付 %%
@@ -129,8 +129,8 @@ graph LR
     %% -------------------- 连线逻辑 -------------------- %%
     ATACv --> Report
     TOBIAS --> Report
-    Enrich_Merge --> Report
-    Enrich_Single --> Report
+    EnrichMerge --> Report
+    EnrichSingle --> Report
 
     %% -------------------- 关键美化：透明化 Subgraph -------------------- %%
     %% 这一步把那块黑色的背景去掉了！ %%
