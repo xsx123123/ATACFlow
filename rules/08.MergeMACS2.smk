@@ -199,7 +199,10 @@ rule idr_analysis:
         )
     output:
         idr_bed = "03.peak_calling/idr/{group}/Final_Consensus_Peaks.bed",
-        idr_log = "03.peak_calling/idr/{group}/idr_batch_run.log",
+        idr_log = "03.peak_calling/idr/{group}/idr_pipeline.log",
+        idr_peaks = lambda wildcards: expand("03.peak_calling/idr/{group}/{sample}_peaks.idr.narrowPeak",
+            sample=groups[wildcards.group]
+        )
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
