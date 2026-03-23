@@ -628,7 +628,7 @@ WT,Mut
 ```yaml
 project_name: 'Your_Project_Name'
 Genome_Version: "hg38"  # 或其他支持的基因组
-species: 'Homo sapiens'
+species: 'Homo_sapiens'
 client: 'Your_Lab_Name'
 
 # 数据路径

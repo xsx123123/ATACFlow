@@ -82,7 +82,7 @@ Project_Root/
 ```yaml
 project_name: 'MyProject'
 Genome_Version: "hg38"
-species: 'Homo sapiens'
+species: 'Homo_sapiens'
 client: 'MyLab'
 
 raw_data_path:

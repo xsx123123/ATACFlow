@@ -96,7 +96,7 @@ git clone --recurse-submodules git@github.com:xsx123123/ATACFlow.git
 # === Basic Project Info ===
 project_name: 'PRJNA_ATAC_Complete'
 Genome_Version: "hg38"
-species: 'Homo sapiens'
+species: 'Homo_sapiens'
 client: 'Internal_Test'
 
 # === Data Paths ===

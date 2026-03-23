@@ -5,7 +5,7 @@
 # === Basic Project Information ===
 project_name: 'PRJNA_ATAC_QC_Only'
 Genome_Version: "hg38"
-species: 'Homo sapiens'
+species: 'Homo_sapiens'
 client: 'Research_Lab'
 
 # === Data Path Configuration ===
