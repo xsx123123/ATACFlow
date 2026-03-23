@@ -1,0 +1,11 @@
+# ATACFlow MCP 服务器路径配置
+# 如果你的 conda 或 snakemake 不在系统环境变量中，请在此指定绝对路径
+
+# Conda 的二进制文件路径 (例如: /home/user/miniconda3/bin/conda)
+conda_path: "micromamba"
+
+# Snakemake 的二进制文件路径 (例如: /home/user/miniconda3/envs/atacflow/bin/snakemake)
+snakemake_path: "/home/zj/.local/share/mamba/envs/snakemake9/bin/snakemake"
+
+# 默认激活的 conda 环境名称
+default_env: "snakemake9"
