@@ -416,7 +416,7 @@ cd /home/zj/pipeline/ATACFlow/skills
 "帮我配置ATACFlow并运行完整分析" 
 ```
 使用ai进行分析示例命令：
-我有一批数据在 `/data/jzhang/project/Temp/atac_skills_analysis/00.raw_data` 下,帮我使用atacflow skill分析呀,基因组使用生菜v8,仅进行qc分析呀,可以使用`activate_snakemake` `alias`命令激活已经配置好的snakemake环境。
+我有一批数据在 `/data/jzhang/project/Temp/atacflow_skill_test/00.raw_data` 下,帮我使用atacflow skill分析呀,基因组使用生菜v11,仅进行qc分析呀,可以使用`activate_snakemake` `alias`命令激活已经配置好的snakemake环境。
 ### 4. 增强版启动脚本特性
 
 `start_atacflow.sh` 提供了安全的分析启动流程：
@@ -605,11 +605,11 @@ ATACFlow遵循以下设计理念：
 创建 CSV 文件，包含以下列：
 
 ```csv
-sample,sample_name,group,fq1,fq2
-SRR001,WT_Rep1,WT,/path/to/SRR001_R1.fastq.gz,/path/to/SRR001_R2.fastq.gz
-SRR002,WT_Rep2,WT,/path/to/SRR002_R1.fastq.gz,/path/to/SRR002_R2.fastq.gz
-SRR003,Mut_Rep1,Mut,/path/to/SRR003_R1.fastq.gz,/path/to/SRR003_R2.fastq.gz
-SRR004,Mut_Rep2,Mut,/path/to/SRR004_R1.fastq.gz,/path/to/SRR004_R2.fastq.gz
+sample,sample_name,group
+SRR001,WT_Rep1,WT
+SRR002,WT_Rep2,WT
+SRR003,Mut_Rep1,Mut
+SRR004,Mut_Rep2,Mut
 ```
 
 #### 2.2 创建对比组配置

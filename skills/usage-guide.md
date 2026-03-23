@@ -52,7 +52,7 @@ Tell your AI agent what you want to do:
 |-------|--------|-------------|----------|
 | FASTQ files | .fastq.gz | Raw sequencing reads (paired-end) | Yes |
 | config.yaml | YAML | Project configuration | Yes |
-| samples.csv | CSV | Sample metadata (sample, sample_name, group, fq1, fq2) | Yes |
+| samples.csv | CSV | Sample metadata (sample, sample_name, group) | Yes |
 | contrasts.csv | CSV | DEG contrasts (contrast, treatment) | For diff_peaks |
 | Reference genome | FASTA+GTF | Indexed reference | Pre-configured |
 
@@ -155,11 +155,11 @@ cp /path/to/your/*.fastq.gz MyProject/00.raw_data/
 
 **samples.csv:**
 ```csv
-sample,sample_name,group,fq1,fq2
-Sample1_R1,Sample1,Control,/path/to/Sample1_R1.fastq.gz,/path/to/Sample1_R2.fastq.gz
-Sample2_R1,Sample2,Control,/path/to/Sample2_R1.fastq.gz,/path/to/Sample2_R2.fastq.gz
-Sample3_R1,Sample3,Treatment,/path/to/Sample3_R1.fastq.gz,/path/to/Sample3_R2.fastq.gz
-Sample4_R1,Sample4,Treatment,/path/to/Sample4_R1.fastq.gz,/path/to/Sample4_R2.fastq.gz
+sample,sample_name,group
+Sample1_R1,Sample1,Control
+Sample2_R1,Sample2,Control
+Sample3_R1,Sample3,Treatment
+Sample4_R1,Sample4,Treatment
 ```
 
 **contrasts.csv:**

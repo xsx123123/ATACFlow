@@ -134,11 +134,11 @@ loki_url: "http://your-loki-server:3100"
 ### Step 3: Create Sample Metadata (samples.csv)
 
 ```csv
-sample,sample_name,group,fq1,fq2
-Sample1_R1,Sample1,Control,/path/to/Sample1_R1.fastq.gz,/path/to/Sample1_R2.fastq.gz
-Sample2_R1,Sample2,Control,/path/to/Sample2_R1.fastq.gz,/path/to/Sample2_R2.fastq.gz
-Sample3_R1,Sample3,Treatment,/path/to/Sample3_R1.fastq.gz,/path/to/Sample3_R2.fastq.gz
-Sample4_R1,Sample4,Treatment,/path/to/Sample4_R1.fastq.gz,/path/to/Sample4_R2.fastq.gz
+sample,sample_name,group
+Sample1_R1,Sample1,Control
+Sample2_R1,Sample2,Control
+Sample3_R1,Sample3,Treatment
+Sample4_R1,Sample4,Treatment
 ```
 
 ### Step 4: Create Contrast Table (contrasts.csv)
