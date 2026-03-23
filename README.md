@@ -248,6 +248,28 @@ graph LR
 - **数据交付**: 组织和打包所有分析结果
 - **报告生成**: 生成最终分析报告
 
+## 📂 仓库目录结构 (Codebase)
+
+```text
+ATACFlow/
+├── snakefile                # Snakemake 主入口文件
+├── config/                  # 配置文件目录 (运行参数、参考基因组)
+├── rules/                   # 模块化规则定义
+├── envs/                    # Conda 环境定义文件 (YAML)
+├── report/                  # 报告系统源码
+├── skills/                  # AI Skills 目录
+│   ├── SKILL.md            # AI 助手技能定义
+│   ├── path_config.yaml    # 路径配置
+│   ├── start_atacflow.sh    # 增强版启动脚本
+│   ├── install_skills.sh   # 通用安装脚本
+│   ├── install_claude_skills.sh # Claude Code 专用安装脚本
+│   ├── install_codex_skills.sh # Codex 专用安装脚本
+│   ├── examples/           # 配置模板示例
+│   └── README.md           # Skills 说明文档
+├── src/                     # 辅助脚本库 (Python/R)
+└── scripts/                 # 实用工具脚本
+```
+
 ## 📁 输出目录结构
 
 ```
@@ -348,6 +370,89 @@ peak_calling:
 peak_calling:
   use_pooled_peaks: false
 ```
+
+## 🤖 AI Skills 使用指南
+
+ATACFlow 提供了专门的 AI Skills，可以让你通过自然语言与 Claude Code、Codex 等 AI 编程助手交互，轻松完成 ATAC-seq 分析。
+
+### 1. 安装 Skills
+> NOTE: 由于分析流程与`skill`分离架构，在安装`skills`前，请修改`path_config.yaml`文件夹中的路径为你的实际路径。例如：`ATACFLOW_ROOT` & `complete` & `standard`等配置
+
+ATACFlow Skills 位于 `skills/` 目录下，支持自动安装到 Claude Code 或 Codex：
+
+```bash
+cd /home/zj/pipeline/ATACFlow/skills
+
+# 自动检测并安装（推荐）
+./install_skills.sh
+
+# 专为 Claude Code 安装
+./install_claude_skills.sh
+
+# 专为 Codex 安装
+./install_codex_skills.sh
+```
+
+### 2. Skills 包含内容
+
+安装后，你的 AI 助手将获得以下能力：
+
+- **SKILL.md**: 完整的 ATACFlow 使用说明和工作流程
+- **path_config.yaml**: 自动配置 ATACFlow 安装路径
+- **start_atacflow.sh**: 增强版启动脚本，包含：
+  - Conda 环境自动检测
+  - Snakemake 可用性验证
+  - 用户确认机制
+  - 完整的分析流程
+
+### 3. 使用示例
+
+安装成功后，重启你的 AI 助手，就可以用自然语言进行交互了：
+
+```
+"帮我设置一个ATACFlow分析项目"
+"运行ATACFlow的QC-only模式检查数据质量"
+"使用ATACFlow做差异peak分析"
+"帮我配置ATACFlow并运行完整分析" 
+```
+使用ai进行分析示例命令：
+我有一批数据在 `/data/jzhang/project/Temp/atac_skills_analysis/00.raw_data` 下,帮我使用atacflow skill分析呀,基因组使用生菜v8,仅进行qc分析呀,可以使用`activate_snakemake` `alias`命令激活已经配置好的snakemake环境。
+### 4. 增强版启动脚本特性
+
+`start_atacflow.sh` 提供了安全的分析启动流程：
+
+```
+[1/5] 检查 conda 是否安装...
+[2/5] 检查 conda 环境...
+[3/5] 检查环境中的 Snakemake...
+[4/5] 环境汇总，等待用户确认...
+[5/5] 用户确认激活环境...
+```
+
+### 5. 手动安装（备选方案）
+
+如果自动安装脚本不适用，可以手动安装：
+
+**Claude Code**:
+```bash
+mkdir -p ~/.claude/skills/ATACFlow
+cp -r skills/* ~/.claude/skills/ATACFlow/
+chmod +x ~/.claude/skills/ATACFlow/start_atacflow.sh
+```
+
+**Codex**:
+```bash
+mkdir -p ~/.codex/skills/ATACFlow
+cp -r skills/* ~/.codex/skills/ATACFlow/
+chmod +x ~/.codex/skills/ATACFlow/start_atacflow.sh
+```
+
+### 6. 更多信息
+
+详细的安装和使用说明请参考：
+- `skills/INSTALL.md` - 完整安装指南
+- `skills/usage-guide.md` - 使用说明
+- `skills/README.md` - Skills 说明文档
 
 ## ⚙️ 配置文件
 
