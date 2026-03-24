@@ -2,6 +2,7 @@
 .gitignore
 ./logs
 *.log
+*.pyc 
 *.RDS
 *.rds
 *.csv

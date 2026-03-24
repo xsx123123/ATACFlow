@@ -14,6 +14,9 @@ mcp_genome_version:
   Lsat_Salinas_v11:
     name: Lsat_Salinas_v11
     description: Lettuce reference genome (v11)
+  Lsat_Salinas_v11_wx:
+    name: Lsat_Salinas_v11_wx
+    description: Lettuce reference genome (v11) power by wang xing
   hg38:
     name: hg38
     description: Human reference genome (GRCh38)
