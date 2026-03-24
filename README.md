@@ -372,6 +372,109 @@ peak_calling:
   use_pooled_peaks: false
 ```
 
+## 🤖 MCP Server (Model Context Protocol)
+
+ATACFlow now includes a **Model Context Protocol (MCP)** server that enables seamless integration with AI assistants like Claude Desktop, allowing you to manage ATAC-seq analysis using natural language.
+
+### 🌟 MCP Features
+
+- **Genome Management**: List and query supported reference genomes from `config/reference.yaml`
+- **Configuration Generation**: Automatically generate `config.yaml`, `samples.csv`, and `contrasts.csv`
+- **System Resource Monitoring**: Real-time CPU, memory, and disk usage checks with warnings before task submission
+- **Project Run Tracking**: SQLite database to record all runs with complete config information
+- **Snakemake Monitoring**: Check running status, view logs, and track progress
+- **Conflict Detection**: Automatic project name conflict detection and warning
+- **Detailed Logging**: Comprehensive logging to `mcp/logs/mcp/` directory
+
+### 📁 MCP Directory Structure
+
+```text
+mcp/
+├── server.py              # MCP Server core
+├── mcp_config.yaml        # MCP configuration
+├── pyproject.toml         # Dependencies
+├── README.md              # MCP-specific documentation
+├── data/                  # SQLite database (gitignored)
+│   └── atacflow_runs.db
+└── logs/                  # MCP server logs (gitignored)
+    └── mcp/
+```
+
+### 🚀 Quick Start with MCP
+
+#### 1. Install Dependencies
+```bash
+cd /home/zj/pipeline/ATACFlow/mcp
+uv sync
+uv add psutil  # For resource monitoring
+```
+
+#### 2. Configure in Claude Desktop
+
+**Local Setup:**
+```json
+{
+  "mcpServers": {
+    "atacflow": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/home/zj/pipeline/ATACFlow/mcp",
+        "run",
+        "server.py"
+      ]
+    }
+  }
+}
+```
+
+**Remote SSH Setup:**
+```json
+{
+  "mcpServers": {
+    "atacflow": {
+      "command": "ssh",
+      "args": [
+        "-p", "4567",
+        "zj@your-server-ip",
+        "cd", "/home/zj/pipeline/ATACFlow/mcp", "&&",
+        "/home/zj/.pyenv/versions/prefect/bin/uv", "run", "python", "server.py"
+      ]
+    }
+  }
+}
+```
+
+### 🔧 Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_supported_genomes()` | List available reference genomes |
+| `get_config_template()` | Get config.yaml templates |
+| `generate_config_file()` | Generate config.yaml |
+| `create_sample_csv()` | Create samples.csv |
+| `create_contrasts_csv()` | Create contrasts.csv |
+| `validate_config()` | Validate configuration |
+| `check_conda_environment()` | Check conda environment |
+| `check_system_resources()` | Check CPU/memory/disk |
+| `run_atacflow()` | Start ATACFlow pipeline |
+| `list_runs()` | List project runs |
+| `get_run_details()` | Get specific run details |
+| `get_run_statistics()` | Get run statistics |
+| `check_project_name_conflict()` | Check for project conflicts |
+| `check_snakemake_status()` | Monitor Snakemake status |
+| `get_snakemake_log()` | View Snakemake logs |
+
+### 📚 More MCP Information
+
+See `mcp/README.md` for complete MCP documentation, including:
+- Detailed configuration options
+- SSH setup with custom ports
+- Database schema and usage
+- Complete troubleshooting guide
+
+---
+
 ## 🤖 AI Skills Usage Guide
 
 ATACFlow provides specialized AI Skills that allow you to interact with AI assistants like Claude Code or Codex using natural language to easily perform ATAC-seq analysis.
