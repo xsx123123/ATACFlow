@@ -26,6 +26,9 @@ from utils.datadeliver import (
 )
 
 
+# Initialize global variable for QC warning
+_qc_warning_logged = False
+
 def DataDeliver(
     config: Dict = None,
     samples: Dict = None,
