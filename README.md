@@ -1,41 +1,43 @@
-# 🧬 ATACFlow: 完整的ATAC-seq数据分析流程
+# 🧬 ATACFlow: Complete ATAC-seq Data Analysis Pipeline
 
-**版本**: v0.0.5
+**Version**: v0.0.5
 
-ATACFlow是一个全面的ATAC-seq数据分析流程，涵盖了从原始数据质控到最终报告生成的完整分析过程。该流程针对植物基因组特性进行了优化，能够有效处理细胞器污染等问题。
+[中文版本](./docs/README_CN.md)
 
-## 📜 版本更新日志
+ATACFlow is a comprehensive ATAC-seq data analysis pipeline that covers the complete analysis process from raw data quality control to final report generation. The pipeline is optimized for plant genome characteristics and can effectively handle issues such as organelle contamination.
+
+## 📜 Version Changelog
 
 ### v0.0.5 (2024-03)
-- **新增**: 灵活的 Peak Calling 策略配置 (`peak_calling.use_pooled_peaks`)
-- **优化**: 重组了 peak calling 模块的输出目录结构，清晰分离单样本、pooled 和 IDR 分析
-- **优化**: 将 FRiP (Fraction of Reads in Peaks) 质控集成到流程中
-- **修复**: 修复了单样本组情况下 DEG 分析无法运行的 bug
-- **改进**: 添加了自动回退逻辑，当无法使用 pooled peaks 时自动使用单样本共识peaks
+- **New**: Flexible Peak Calling strategy configuration (`peak_calling.use_pooled_peaks`)
+- **Optimized**: Reorganized output directory structure of peak calling module, clearly separating single sample, pooled, and IDR analysis
+- **Optimized**: Integrated FRiP (Fraction of Reads in Peaks) quality control into the pipeline
+- **Fixed**: Fixed bug where DEG analysis could not run in single sample group cases
+- **Improved**: Added automatic fallback logic, automatically using single sample consensus peaks when pooled peaks cannot be used
 
-## 🌟 核心特色 (Core Highlights)
+## 🌟 Core Highlights
 
-ATACFlow 不仅仅是一个基础的比对和 Peak Calling 流程，它集成了多项前沿特性：
+ATACFlow is more than just a basic alignment and Peak Calling pipeline; it integrates multiple cutting-edge features:
 
-*   **双引擎比对支持**: 支持 **Bowtie2** 和 **Chromap** 两种比对引擎，可通过配置文件灵活切换。**默认使用 Chromap**（专为大规模 ATAC-seq 数据优化，处理速度更快）；Bowtie2 则提供更广泛的兼容性和精细化控制。
-*   **高级足迹分析 (TOBIAS Footprinting)**: 集成了完整的 TOBIAS 流程（ATACorrect -> EstimateFootprints -> BINDetect），能够以单碱基分辨率推断转录因子的动态结合。
-*   **AI 驱动的自动化报告**: 利用大语言模型 (LLM) 驱动的 AI 引擎，结合容器化技术 (Apptainer/Docker)，自动生成包含生物学解读的交互式分析报告。
-*   **植物学深度优化**: 针对植物基因组中高比例的线粒体/叶绿体污染，实现了动态剔除和结构性过滤算法，最大化保留有效读段。
-*   **灵活的 Peak Calling 策略** *(v0.0.5)*: 默认采用 "Group Merge -> Call Peak" 策略，显著提升了生物学重复样本中弱信号 Peak 的检测灵敏度。支持配置化选择使用 pooled 或单样本共识peaks。
+*   **Dual-engine alignment support**: Supports both **Bowtie2** and **Chromap** alignment engines, which can be flexibly switched via configuration files. **Uses Chromap by default** (optimized for large-scale ATAC-seq data, faster processing); Bowtie2 provides broader compatibility and fine-grained control.
+*   **Advanced footprint analysis (TOBIAS Footprinting)**: Integrates complete TOBIAS workflow (ATACorrect -> EstimateFootprints -> BINDetect), enabling inference of transcription factor dynamic binding at single-base resolution.
+*   **AI-driven automated reporting**: Uses LLM-driven AI engine combined with containerization technology (Apptainer/Docker) to automatically generate interactive analysis reports with biological interpretation.
+*   **Deep botanical optimization**: Implements dynamic removal and structural filtering algorithms for the high proportion of mitochondrial/chloroplast contamination in plant genomes, maximizing retention of valid reads.
+*   **Flexible Peak Calling strategy** *(v0.0.5)*: Defaults to "Group Merge -> Call Peak" strategy, significantly improving detection sensitivity of weak signal peaks in biological replicate samples. Supports configurable selection of pooled or single sample consensus peaks.
 
-## 📋 流程概览
+## 📋 Pipeline Overview
 
-ATACFlow包含以下主要分析阶段：
+ATACFlow includes the following main analysis stages:
 
-1. **数据预处理与质控**
-2. **序列比对与过滤**
-3. **Peak识别与注释**
-4. **合并样本分析**
-5. **转录因子结合位点分析**
-6. **质量控制与报告生成**
+1. **Data preprocessing and quality control**
+2. **Sequence alignment and filtering**
+3. **Peak identification and annotation**
+4. **Merged sample analysis**
+5. **Transcription factor binding site analysis**
+6. **Quality control and report generation**
 
 ```mermaid
-%% 初始化配置：使用 base 主题，强制让背景透明，线条用中性色 %%
+%% Initial configuration: Use base theme, force transparent background, use neutral colors for lines %%
 %%{
   init: {
     'theme': 'base',
@@ -50,34 +52,34 @@ ATACFlow包含以下主要分析阶段：
 
 graph LR
 
-    %% -------------------- 样式库 -------------------- %%
-    %% 核心技巧：颜色不要太深，也不要太亮，保持中间调 %%
+    %% -------------------- Style Library -------------------- %%
+    %% Core tip: Use mid-tones—not too dark, not too bright %%
 
-    %% 普通节点：圆角 + 中性边框 %%
+    %% Standard node: Rounded corners + neutral border %%
     classDef base fill:#fff,stroke:#7f8c8d,stroke-width:1px,rx:5,ry:5,color:#333;
 
-    %% 1. 数据流 (蓝色系) - 在黑夜模式下会显得很亮眼 %%
+    %% 1. Data Flow (Blue) - Stands out in Dark Mode %%
     classDef raw fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,rx:5,ry:5,color:#0d47a1;
 
-    %% 2. 比对流 (绿色系) %%
+    %% 2. Alignment Flow (Green) %%
     classDef map fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,rx:5,ry:5,color:#1b5e20;
 
-    %% 3. 分析流 (橙色系) %%
+    %% 3. Core Analysis Flow (Orange) %%
     classDef core fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,rx:5,ry:5,color:#e65100;
 
-    %% 4. 高级流 (紫色系) %%
+    %% 4. Advanced Flow (Purple) %%
     classDef adv fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,rx:5,ry:5,color:#4a148c;
 
-    %% 5. 终点 (深灰底白字) - 注意：fill 用深灰而不是纯黑，stroke 用浅灰，这样在黑底也能看清边界 %%
+    %% 5. Terminal Node (Dark Grey background, white text) %%
     classDef endNode fill:#37474f,stroke:#cfd8dc,stroke-width:2px,rx:15,ry:15,color:#fff;
 
-    %% 决策节点 %%
+    %% Decision Node %%
     classDef decision fill:#fffde7,stroke:#f57f17,stroke-width:2px,rx:5,ry:5,color:#ff6f00;
 
 
-    %% -------------------- 流程图内容 -------------------- %%
+    %% -------------------- Flowchart Content -------------------- %%
 
-    %% 1. 数据清洗 %%
+    %% 1. Data Cleaning %%
     subgraph S1 ["Step 1: Data Cleaning"]
         direction TB
         Raw[Raw Data]:::raw --> MD5{MD5 Check}:::base
@@ -86,7 +88,7 @@ graph LR
         Trim --> Clean[Clean Data]:::raw
     end
 
-    %% 2. 比对与过滤 %%
+    %% 2. Mapping & Filtering %%
     subgraph S2 ["Step 2: Mapping & Filtering"]
         direction TB
         Clean --> Bowtie2[Bowtie2 Mapping]:::map
@@ -95,7 +97,7 @@ graph LR
         Shift --> BAM[Processed BAM]:::map
     end
 
-    %% 3. Peak识别 - 三路径 (v0.0.5更新) %%
+    %% 3. Peak Identification - Three Paths (v0.0.5 Update) %%
     subgraph S3 ["Step 3: Peak Calling"]
         direction TB
         BAM --> SinglePeaks[Single Sample MACS2]:::core
@@ -112,7 +114,7 @@ graph LR
         PooledConsensus --> DEG
     end
 
-    %% 4. 高级分析 %%
+    %% 4. Advanced Analysis %%
     subgraph S4 ["Step 4: Advanced Analysis"]
         direction TB
         BAM -.-> ATACv[ATACv QC]:::adv
@@ -123,315 +125,418 @@ graph LR
         DEGSingle --> EnrichSingle[GO KEGG Enrichment Single]:::adv
     end
 
-    %% 5. 交付 %%
+    %% 5. Delivery %%
     Report(Final Report):::endNode
 
-    %% -------------------- 连线逻辑 -------------------- %%
+    %% -------------------- Connection Logic -------------------- %%
     ATACv --> Report
     TOBIAS --> Report
     EnrichMerge --> Report
     EnrichSingle --> Report
 
-    %% -------------------- 关键美化：透明化 Subgraph -------------------- %%
-    %% 这一步把那块黑色的背景去掉了！ %%
-    %% fill:none = 透明 %%
-    %% stroke:#7f8c8d = 中性灰边框 (黑白背景都可见) %%
-    %% stroke-dasharray = 虚线，看起来更轻盈 %%
+    %% -------------------- Subgraph Styling: Transparency -------------------- %%
+    %% fill:none = Transparent %%
+    %% stroke:#7f8c8d = Neutral grey border %%
+    %% stroke-dasharray = Dashed line %%
 
     style S1 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
     style S2 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
     style S3 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
     style S4 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
 
-    %% 统一线条颜色为中性灰 %%
+    %% Unify line colors to neutral grey %%
     linkStyle default stroke:#7f8c8d,stroke-width:1px,fill:none;
 ```
 
-## 🔬 详细分析流程
+## 🔬 Detailed Analysis Pipeline
 
-### 1. 数据预处理与质控 (Quality Control & Preprocessing)
+### 1. Quality Control & Preprocessing
 
-#### 目标
-对原始测序数据进行质量控制和预处理，确保后续分析的数据质量。
+#### Objectives
+Perform quality control and preprocessing on raw sequencing data to ensure data quality for downstream analysis.
 
-#### 工具
-- FastQC: 序列质量评估
-- Fastp: 序列修剪和过滤
-- MultiQC: 质控结果汇总
-- FastQ Screen: 污染检测
+#### Tools
+- FastQC: Sequence quality assessment
+- Fastp: Sequence trimming and filtering
+- MultiQC: Quality control results aggregation
+- FastQ Screen: Contamination detection
 
-#### 处理步骤
-- **MD5校验**: 验证原始数据完整性
-- **FastQC分析**: 评估原始数据质量
-- **污染检测**: 使用FastQ Screen检测外源序列污染
-- **序列修剪**: 使用Fastp去除低质量序列和接头
-- **质控汇总**: 使用MultiQC生成综合质控报告
+#### Processing Steps
+- **MD5 Verification**: Validate raw data integrity.
+- **FastQC Analysis**: Evaluate raw data quality.
+- **Contamination Detection**: Use FastQ Screen to detect foreign sequence contamination.
+- **Sequence Trimming**: Use Fastp to remove low-quality sequences and adapters.
+- **QC Aggregation**: Generate a comprehensive QC report using MultiQC.
 
-### 2. 序列比对与过滤 (Mapping & Filtering)
+### 2. Mapping & Filtering
 
-#### 目标
-将高质量的reads比对到参考基因组，并进行严格的过滤以获得高质量的比对结果。
+#### Objectives
+Align high-quality reads to the reference genome and perform rigorous filtering to obtain high-quality alignment results.
 
-#### 工具
-- **Bowtie2** 或 **Chromap**: 序列比对（通过配置切换）
-  - Bowtie2: 经典比对工具，兼容性好，参数控制精细
-  - Chromap: 专为大规模 ATAC-seq 数据优化，处理速度更快
-- Samtools: BAM文件处理
-- 自研Rust工具: 结构性过滤
+#### Tools
+- **Bowtie2** or **Chromap**: Sequence alignment (configurable).
+  - Bowtie2: Classic tool with excellent compatibility and fine-grained parameter control.
+  - Chromap: Optimized for large-scale ATAC-seq data with faster processing speeds.
+- Samtools: BAM file processing.
+- In-house Rust Tools: Structural filtering.
 
-#### 处理步骤
-- **序列比对**: 使用Bowtie2将reads比对到参考基因组
-- **重复标记**: 使用GATK标记PCR重复
-- **基础过滤**: 去除未比对、次要比对和低质量比对
-- **植物学优化**: 动态剔除线粒体和叶绿体比对reads
-- **结构性过滤**: 使用自研工具进行配对关系严格质控
-- **坐标排序**: 生成最终的坐标排序BAM文件
+#### Processing Steps
+- **Sequence Alignment**: Align reads to the reference genome using Bowtie2 or Chromap.
+- **Duplicate Marking**: Mark PCR duplicates using GATK.
+- **Basic Filtering**: Remove unmapped, secondary, and low-quality alignments.
+- **Botanical Optimization**: Dynamically exclude reads aligned to mitochondrial and chloroplast genomes.
+- **Structural Filtering**: Use in-house tools for rigorous paired-end relationship quality control.
+- **Coordinate Sorting**: Generate the final coordinate-sorted BAM files.
 
-### 3. Peak识别与注释 (Peak Calling & Annotation)
+### 3. Peak Calling & Annotation
 
-#### 目标
-识别开放染色质区域并进行功能注释。
+#### Objectives
+Identify open chromatin regions and perform functional annotation.
 
-#### 工具
-- MACS2: Peak识别
-- HOMER: Peak注释
+#### Tools
+- MACS2: Peak identification.
+- HOMER: Peak annotation.
 
-#### 处理步骤
-- **Peak识别**: 使用MACS2识别开放染色质区域
-- **Peak注释**: 使用HOMER对peaks进行基因功能注释
-- **TSS富集分析**: 评估ATAC-seq数据质量
+#### Processing Steps
+- **Peak Identification**: Identify open chromatin regions using MACS2.
+- **Peak Annotation**: Annotate peak functions using HOMER.
+- **TSS Enrichment Analysis**: Evaluate ATAC-seq data quality based on Transcription Start Site enrichment.
 
-### 4. 合并样本分析 (Merged Sample Analysis)
+### 4. Merged Sample Analysis
 
-#### 目标
-对同一组的生物学重复样本进行合并分析，提高检测效力。
+#### Objectives
+Perform pooled analysis on biological replicates within the same group to increase detection power.
 
-#### 处理步骤
-- **BAM文件合并**: 合并同一组的生物学重复样本
-- **合并Peak识别**: 在合并样本上进行peak识别
-- **Peak注释**: 对合并样本的peaks进行注释
+#### Processing Steps
+- **BAM Merging**: Merge BAM files from biological replicates of the same group.
+- **Pooled Peak Calling**: Identify peaks on the merged samples.
+- **Peak Annotation**: Annotate peaks identified from the pooled samples.
 
-### 5. 转录因子结合位点分析 (Motif Analysis)
+### 5. Motif Analysis (Transcription Factor Binding)
 
-#### 目标
-识别开放染色质区域中的转录因子结合位点，并比较不同实验组间的差异。
+#### Objectives
+Identify transcription factor binding sites within open chromatin regions and compare differences between experimental groups.
 
-#### 工具
+#### Tools
 - TOBIAS (Transcription factor Occupancy prediction By Investigation of ATAC-seq Signal)
 
-#### 分析流程
-- **足迹分析 (Footprinting)**: 识别蛋白质-DNA结合足迹，推断转录因子结合位点
-- **结合偏好分析 (BINDetect)**: 基于motif数据库检测转录因子结合偏好
-- **组间差异分析**: 比较预定义对比组间的转录因子结合差异
-- **可视化**: 生成火山图、MA图等可视化结果
+#### Workflow
+- **Footprinting**: Identify protein-DNA binding footprints to infer transcription factor binding sites.
+- **Binding Preference (BINDetect)**: Detect TF binding preferences based on motif databases.
+- **Differential Analysis**: Compare TF binding differences between predefined contrast groups.
+- **Visualization**: Generate visualizations such as Volcano plots and MA plots.
 
-#### 输出文件
-- 格式化的peak文件
-- 校正后的信号bigwig文件
-- 足迹分析结果
-- 转录因子结合检测结果和可视化图表
-- 组间差异分析报告
+#### Output Files
+- Formatted peak files.
+- Corrected signal BigWig files.
+- Footprinting results.
+- TF binding detection results and visualization charts.
+- Differential analysis reports.
 
-### 6. 质量控制与报告生成 (QC & Reporting)
+### 6. QC & Reporting
 
-#### 目标
-生成全面的质量控制报告和分析结果报告。
+#### Objectives
+Generate comprehensive quality control and analysis result reports.
 
-#### 工具
-- ataqv: ATAC-seq特异性质控
-- MultiQC: 结果汇总
-- 自定义报告工具
+#### Tools
+- ataqv: ATAC-seq specific quality control.
+- MultiQC: Results aggregation.
+- Custom Reporting Tools: AI-driven report generation.
 
-#### 处理步骤
-- **ataqv质控**: 生成ATAC-seq特异性质量控制报告
-- **结果汇总**: 使用MultiQC汇总所有分析结果
-- **数据交付**: 组织和打包所有分析结果
-- **报告生成**: 生成最终分析报告
+#### Processing Steps
+- **ataqv QC**: Generate ATAC-seq specific quality control reports.
+- **Results Aggregation**: Aggregate all analysis results using MultiQC.
+- **Data Delivery**: Organize and package all analysis results.
+- **Report Generation**: Produce the final analysis report.
 
-## 📂 仓库目录结构 (Codebase)
+## 📂 Repository Directory Structure
 
 ```text
 ATACFlow/
-├── snakefile                # Snakemake 主入口文件
-├── config/                  # 配置文件目录 (运行参数、参考基因组)
-├── rules/                   # 模块化规则定义
-├── envs/                    # Conda 环境定义文件 (YAML)
-├── report/                  # 报告系统源码
-├── skills/                  # AI Skills 目录
-│   ├── SKILL.md            # AI 助手技能定义
-│   ├── path_config.yaml    # 路径配置
-│   ├── start_atacflow.sh    # 增强版启动脚本
-│   ├── install_skills.sh   # 通用安装脚本
-│   ├── install_claude_skills.sh # Claude Code 专用安装脚本
-│   ├── install_codex_skills.sh # Codex 专用安装脚本
-│   ├── examples/           # 配置模板示例
-│   └── README.md           # Skills 说明文档
-├── src/                     # 辅助脚本库 (Python/R)
-└── scripts/                 # 实用工具脚本
+├── snakefile                # Snakemake main entry point
+├── config/                  # Configuration directory (parameters, reference genomes)
+├── rules/                   # Modular rule definitions
+├── envs/                    # Conda environment definition files (YAML)
+├── report/                  # Report system source code
+├── skills/                  # AI Skills directory
+│   ├── SKILL.md            # AI assistant skill definition
+│   ├── path_config.yaml    # Path configuration
+│   ├── start_atacflow.sh    # Enhanced startup script
+│   ├── install_skills.sh   # General installation script
+│   ├── install_claude_skills.sh # Claude Code specific installation script
+│   ├── install_codex_skills.sh # Codex specific installation script
+│   ├── examples/           # Configuration template examples
+│   └── README.md           # Skills documentation
+├── src/                     # Helper script library (Python/R)
+└── scripts/                 # Utility scripts
 ```
 
-## 📁 输出目录结构
+## 📁 Output Directory Structure
 
 ```
-├── 00.raw_data/           # 原始数据链接和MD5校验
-├── 01.qc/                 # 质控结果
-│   ├── short_read_qc_r1/  # R1 reads质控
-│   ├── short_read_qc_r2/  # R2 reads质控
-│   ├── short_read_trim/   # 修剪后数据和质控报告
+├── 00.raw_data/           # Raw data links and MD5 verification
+├── 01.qc/                 # Quality control results
+│   ├── short_read_qc_r1/  # R1 reads quality control
+│   ├── short_read_qc_r2/  # R2 reads quality control
+│   ├── short_read_trim/   # Trimmed data and QC reports
 │   └── ...
-├── 02.mapping/            # 比对结果
-│   ├── Bowtie2/           # Bowtie2比对结果
-│   ├── filter_pe/         # 过滤后结果
-│   ├── shifted/           # 位移后结果
-│   ├── merged/            # 合并样本结果 (run_pooled=True时)
-│   └── ataqv/             # ATAC-seq质控结果
-├── 03.peak_calling/       # Peak识别结果
-│   ├── single/            # 单样本peak calling (始终运行)
-│   ├── single_HOMER/      # 单样本peak注释
-│   ├── pooled/            # 组级别pooled peak calling (run_pooled=True时)
-│   ├── pooled_HOMER/      # 组级别peak注释
-│   ├── idr/               # IDR分析 (组内>=2样本时)
-│   └── idr_HOMER/         # IDR peak注释
-├── 04.consensus/          # 共识peak集
-│   ├── single/            # 单样本共识 (始终运行)
+├── 02.mapping/            # Alignment results
+│   ├── Bowtie2/           # Bowtie2 alignment results
+│   ├── filter_pe/         # Filtered results
+│   ├── shifted/           # Shifted results
+│   ├── merged/            # Merged sample results (when run_pooled=True)
+│   └── ataqv/             # ATAC-seq specific QC results
+├── 03.peak_calling/       # Peak calling results
+│   ├── single/            # Single sample peak calling (always run)
+│   ├── single_HOMER/      # Single sample peak annotation
+│   ├── pooled/            # Group-level pooled peak calling (when run_pooled=True)
+│   ├── pooled_HOMER/      # Group-level peak annotation
+│   ├── idr/               # IDR analysis (when group size >= 2)
+│   └── idr_HOMER/         # IDR peak annotation
+├── 04.consensus/          # Consensus peak sets
+│   ├── single/            # Single sample consensus (always run)
 │   │   ├── all_samples_consensus_peaks.bed
 │   │   ├── consensus_peaks_annotation.txt
 │   │   ├── consensus_counts_matrix.txt
 │   │   └── consensus_counts_matrix_ann.txt
-│   └── pooled/            # 组级别共识 (run_pooled=True时)
+│   └── pooled/            # Group-level consensus (when run_pooled=True)
 │       ├── all_groups_consensus_peaks.bed
 │       ├── consensus_peaks_annotation.txt
 │       ├── consensus_counts_matrix.txt
 │       └── consensus_counts_matrix_ann.txt
-├── 05.ATAC_QC/            # ATAC-seq特异性质控报告
-├── 06.deg_enrich/         # 差异分析和富集分析
-│   ├── DEG/               # 差异peak分析结果
-│   └── enrich/            # GO/KEGG富集分析
-├── 06.motif_analysis/     # 转录因子结合位点分析
+├── 05.ATAC_QC/            # ATAC-seq specific quality control reports
+├── 06.deg_enrich/         # Differential analysis and enrichment results
+│   ├── DEG/               # Differential peak analysis results
+│   └── enrich/            # GO/KEGG enrichment analysis
+├── 06.motif_analysis/     # Transcription factor binding site analysis
 │   ├── 01.formatted_peaks/
 │   ├── 02.signal_corrected/
 │   ├── 03.footprints/
 │   ├── 04.bindetect/
 │   ├── 05.differential_motifs/
 │   └── 06.final_report/
-└── report/                # 最终报告
+└── report/                # Final interactive report
 ```
 
-## ⚙️ Peak Calling 策略配置 (v0.0.5 新增)
+## ⚙️ Peak Calling Strategy Configuration (v0.0.5 New)
 
-ATACFlow v0.0.5 引入了灵活的 Peak Calling 策略配置，用户可以通过配置文件控制使用哪种共识peaks进行下游差异分析。
+ATACFlow v0.0.5 introduces flexible Peak Calling strategy configuration, allowing users to control which consensus peaks are used for downstream differential analysis via the configuration file.
 
-### 配置选项
+### Configuration Options
 
-在 `config.yaml` 中添加以下配置：
+Add the following to your `config.yaml`:
 
 ```yaml
 # Peak Calling Configuration
-# 控制peaks的调用和合并方式
+# Controls how peaks are called and merged
 peak_calling:
-  # 使用pooled (合并组) 共识peaks进行DEG分析
-  # true: 在组内合并生物学重复后调用peaks (更robust，推荐)
-  # false: 使用单样本共识peaks
+  # Use pooled (merged group) consensus peaks for DEG analysis
+  # true: Call peaks after merging biological replicates within a group (more robust, recommended)
+  # false: Use single sample consensus peaks
   use_pooled_peaks: true
 ```
 
-### 运行逻辑
+### Execution Logic
 
-| 配置 | merge_group | run_pooled | DEG分析输入 |
+| Config | merge_group | run_pooled | DEG Analysis Input |
 |------|-------------|------------|-------------|
-| use_pooled_peaks: true | True | ✅ 运行 | `04.consensus/pooled/consensus_counts_matrix_ann.txt` |
-| use_pooled_peaks: true | False (有单样本组) | ❌ 跳过 | `04.consensus/single/consensus_counts_matrix_ann.txt` (自动回退) |
-| use_pooled_peaks: false | 任意 | ❌ 跳过 | `04.consensus/single/consensus_counts_matrix_ann.txt` |
+| use_pooled_peaks: true | True | ✅ Run | `04.consensus/pooled/consensus_counts_matrix_ann.txt` |
+| use_pooled_peaks: true | False (single-sample groups exist) | ❌ Skip | `04.consensus/single/consensus_counts_matrix_ann.txt` (Auto-fallback) |
+| use_pooled_peaks: false | Any | ❌ Skip | `04.consensus/single/consensus_counts_matrix_ann.txt` |
 
-> **注意**: `merge_group` 是自动检测的变量，仅当所有实验组都有多于1个生物学重复时为 True。如果存在单样本组，系统会自动回退到单样本共识peaks。
+> **Note**: `merge_group` is an automatically detected variable, set to True only if all experimental groups have more than one biological replicate. If any group contains only a single sample, the system automatically falls back to single-sample consensus peaks.
 
-### 三种分析模式说明
+### Description of Analysis Modes
 
-1. **单样本分析 (Single Sample)**: 对每个样本独立进行 peak calling，然后合并所有样本的peaks生成共识集
+1. **Single Sample Analysis**: Performs peak calling independently for each sample, then merges all peaks to generate a consensus set.
 
-2. **Pooled分析 (合并样本)**: 先将同一组的生物学重复样本的BAM文件合并，然后在合并后的BAM上进行peak calling
-   - 优势: 增加测序深度，提高弱信号peaks的检测灵敏度
-   - 适用于: 有多个生物学重复的实验组
+2. **Pooled Analysis**: Merges BAM files of biological replicates within the same group before performing peak calling on the merged BAM.
+   - **Advantage**: Increases sequencing depth and sensitivity for detecting weak signal peaks.
+   - **Applicability**: Recommended for groups with multiple biological replicates.
 
-3. **IDR分析**: 在组内样本间进行 Irreproducible Discovery Rate 分析，识别可重复的peaks
-   - 用途: 质量控制，评估生物学重复间的一致性
-   - 注意: IDR过滤后的peaks数量可能较少，不建议用于差异分析
+3. **IDR Analysis**: Performs Irreproducible Discovery Rate analysis between replicates within a group to identify reproducible peaks.
+   - **Purpose**: Quality control and assessing consistency between biological replicates.
+   - **Note**: The number of IDR-filtered peaks might be low; it is generally not recommended for differential analysis.
 
-### 推荐的配置
+### Recommended Configuration
 
 ```yaml
-# 推荐配置: 使用pooled peaks
-# 适用于: 有2个或以上生物学重复的实验
+# Recommended: Use pooled peaks
+# Best for experiments with 2 or more biological replicates
 peak_calling:
   use_pooled_peaks: true
 
-# 替代配置: 使用单样本共识peaks
-# 适用于: 想保留更多peaks，或生物学重复较少的情况
+# Alternative: Use single sample consensus peaks
+# Best for retaining more peaks or when replicates are few/inconsistent
 peak_calling:
   use_pooled_peaks: false
 ```
 
-## 🤖 AI Skills 使用指南
+## 🤖 MCP Server (Model Context Protocol)
 
-ATACFlow 提供了专门的 AI Skills，可以让你通过自然语言与 Claude Code、Codex 等 AI 编程助手交互，轻松完成 ATAC-seq 分析。
+ATACFlow now includes a **Model Context Protocol (MCP)** server that enables seamless integration with AI assistants like Claude Desktop, allowing you to manage ATAC-seq analysis using natural language.
 
-### 1. 安装 Skills
-> NOTE: 由于分析流程与`skill`分离架构，在安装`skills`前，请修改`path_config.yaml`文件夹中的路径为你的实际路径。例如：`ATACFLOW_ROOT` & `complete` & `standard`等配置
+### 🌟 MCP Features
 
-ATACFlow Skills 位于 `skills/` 目录下，支持自动安装到 Claude Code 或 Codex：
+- **Genome Management**: List and query supported reference genomes from `config/reference.yaml`
+- **Configuration Generation**: Automatically generate `config.yaml`, `samples.csv`, and `contrasts.csv`
+- **System Resource Monitoring**: Real-time CPU, memory, and disk usage checks with warnings before task submission
+- **Project Run Tracking**: SQLite database to record all runs with complete config information
+- **Snakemake Monitoring**: Check running status, view logs, and track progress
+- **Conflict Detection**: Automatic project name conflict detection and warning
+- **Detailed Logging**: Comprehensive logging to `mcp/logs/mcp/` directory
+
+### 📁 MCP Directory Structure
+
+```text
+mcp/
+├── server.py              # MCP Server core
+├── mcp_config.yaml        # MCP configuration
+├── pyproject.toml         # Dependencies
+├── README.md              # MCP-specific documentation
+├── data/                  # SQLite database (gitignored)
+│   └── atacflow_runs.db
+└── logs/                  # MCP server logs (gitignored)
+    └── mcp/
+```
+
+### 🚀 Quick Start with MCP
+
+#### 1. Install Dependencies
+```bash
+cd /home/zj/pipeline/ATACFlow/mcp
+uv sync
+uv add psutil  # For resource monitoring
+```
+
+#### 2. Configure in Claude Desktop
+
+**Local Setup:**
+```json
+{
+  "mcpServers": {
+    "atacflow": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/home/zj/pipeline/ATACFlow/mcp",
+        "run",
+        "server.py"
+      ]
+    }
+  }
+}
+```
+
+**Remote SSH Setup:**
+```json
+{
+  "mcpServers": {
+    "atacflow": {
+      "command": "ssh",
+      "args": [
+        "-p", "4567",
+        "zj@your-server-ip",
+        "cd", "/home/zj/pipeline/ATACFlow/mcp", "&&",
+        "/home/zj/.pyenv/versions/prefect/bin/uv", "run", "python", "server.py"
+      ]
+    }
+  }
+}
+```
+
+### 🔧 Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_supported_genomes()` | List available reference genomes |
+| `get_config_template()` | Get config.yaml templates |
+| `generate_config_file()` | Generate config.yaml |
+| `create_sample_csv()` | Create samples.csv |
+| `create_contrasts_csv()` | Create contrasts.csv |
+| `validate_config()` | Validate configuration |
+| `check_conda_environment()` | Check conda environment |
+| `check_system_resources()` | Check CPU/memory/disk |
+| `run_atacflow()` | Start ATACFlow pipeline |
+| `list_runs()` | List project runs |
+| `get_run_details()` | Get specific run details |
+| `get_run_statistics()` | Get run statistics |
+| `check_project_name_conflict()` | Check for project conflicts |
+| `check_snakemake_status()` | Monitor Snakemake status |
+| `get_snakemake_log()` | View Snakemake logs |
+
+### 📚 More MCP Information
+
+See `mcp/README.md` for complete MCP documentation, including:
+- Detailed configuration options
+- SSH setup with custom ports
+- Database schema and usage
+- Complete troubleshooting guide
+
+---
+
+## 🤖 AI Skills Usage Guide
+
+ATACFlow provides specialized AI Skills that allow you to interact with AI assistants like Claude Code or Codex using natural language to easily perform ATAC-seq analysis.
+
+### 1. Install Skills
+> NOTE: Before installing `skills`, please update the paths in `path_config.yaml` to your actual installation paths (e.g., `ATACFLOW_ROOT`, `complete`, `standard`).
+
+ATACFlow Skills are located in the `skills/` directory and can be automatically installed:
 
 ```bash
 cd /home/zj/pipeline/ATACFlow/skills
 
-# 自动检测并安装（推荐）
+# Auto-detect and install (Recommended)
 ./install_skills.sh
 
-# 专为 Claude Code 安装
+# Specific for Claude Code
 ./install_claude_skills.sh
 
-# 专为 Codex 安装
+# Specific for Codex
 ./install_codex_skills.sh
 ```
 
-### 2. Skills 包含内容
+### 2. What's Included
 
-安装后，你的 AI 助手将获得以下能力：
+After installation, your AI assistant will gain the following capabilities:
 
-- **SKILL.md**: 完整的 ATACFlow 使用说明和工作流程
-- **path_config.yaml**: 自动配置 ATACFlow 安装路径
-- **start_atacflow.sh**: 增强版启动脚本，包含：
-  - Conda 环境自动检测
-  - Snakemake 可用性验证
-  - 用户确认机制
-  - 完整的分析流程
+- **SKILL.md**: Full ATACFlow documentation and workflow instructions.
+- **path_config.yaml**: Automatically configures the ATACFlow installation path.
+- **start_atacflow.sh**: An enhanced startup script featuring:
+  - Automatic Conda environment detection.
+  - Snakemake availability verification.
+  - User confirmation mechanisms.
+  - Full analysis pipeline execution.
 
-### 3. 使用示例
+### 3. Usage Examples
 
-安装成功后，重启你的 AI 助手，就可以用自然语言进行交互了：
-
-```
-"帮我设置一个ATACFlow分析项目"
-"运行ATACFlow的QC-only模式检查数据质量"
-"使用ATACFlow做差异peak分析"
-"帮我配置ATACFlow并运行完整分析" 
-```
-使用ai进行分析示例命令：
-我有一批数据在 `/data/jzhang/project/Temp/atacflow_skill_test/00.raw_data` 下,帮我使用atacflow skill分析呀,基因组使用生菜v11,仅进行qc分析呀,可以使用`activate_snakemake` `alias`命令激活已经配置好的snakemake环境。
-### 4. 增强版启动脚本特性
-
-`start_atacflow.sh` 提供了安全的分析启动流程：
+Restart your AI assistant after installation to start interacting:
 
 ```
-[1/5] 检查 conda 是否安装...
-[2/5] 检查 conda 环境...
-[3/5] 检查环境中的 Snakemake...
-[4/5] 环境汇总，等待用户确认...
-[5/5] 用户确认激活环境...
+"Help me set up an ATACFlow analysis project."
+"Run ATACFlow in QC-only mode to check data quality."
+"Perform differential peak analysis using ATACFlow."
+"Configure ATACFlow and run a complete analysis." 
+```
+Example natural language command:
+"I have a batch of data in `/data/jzhang/project/Temp/atacflow_skill_test/00.raw_data`. Help me analyze it using the atacflow skill. Use the Lettuce v11 genome and only perform QC analysis. You can use the `activate_snakemake` alias to activate the pre-configured snakemake environment."
+
+### 4. Enhanced Startup Script Features
+
+`start_atacflow.sh` provides a safe startup process:
+
+```
+[1/5] Checking if conda is installed...
+[2/5] Checking conda environment...
+[3/5] Verifying Snakemake in the environment...
+[4/5] Environment summary, waiting for user confirmation...
+[5/5] Activating environment and starting analysis...
 ```
 
-### 5. 手动安装（备选方案）
+### 5. Manual Installation (Alternative)
 
-如果自动安装脚本不适用，可以手动安装：
+If automatic scripts fail, you can install manually:
 
 **Claude Code**:
 ```bash
@@ -447,85 +552,85 @@ cp -r skills/* ~/.codex/skills/ATACFlow/
 chmod +x ~/.codex/skills/ATACFlow/start_atacflow.sh
 ```
 
-### 6. 更多信息
+### 6. More Information
 
-详细的安装和使用说明请参考：
-- `skills/INSTALL.md` - 完整安装指南
-- `skills/usage-guide.md` - 使用说明
-- `skills/README.md` - Skills 说明文档
+For detailed installation and usage, refer to:
+- `skills/INSTALL.md` - Complete installation guide.
+- `skills/usage-guide.md` - Usage instructions.
+- `skills/README.md` - Skills overview.
 
-## ⚙️ 配置文件
+## ⚙️ Configuration Files
 
-流程使用多个独立的配置文件来控制不同方面的参数，这种设计使得：
-- **配置可复用**：相同物种的配置可以快速迁移到新项目
-- **参数易维护**：修改特定类型参数时只需编辑对应文件
-- **职责分离**：避免单个配置文件过于庞大
+The pipeline uses several independent configuration files to manage different parameters. This design ensures:
+- **Reusable Configurations**: Species-specific settings can be quickly migrated to new projects.
+- **Easy Maintenance**: Modify specific parameters without touching the main code.
+- **Separation of Concerns**: Prevents a single configuration file from becoming unmanageably large.
 
-### 配置文件说明
+### Configuration File Description
 
-| 文件 | 作用 | 主要内容 |
+| File | Purpose | Main Content |
 |------|------|----------|
-| `config.yaml` | 主配置文件 | 流程控制开关、输出设置、Peak Calling策略 |
-| `reference.yaml` | 参考基因组配置 | 基因组索引路径、GTF、GFF、染色体信息等 |
-| `run_parameter.yaml` | 运行时参数 | 线程数、软件参数、脚本路径、阈值设置 |
-| `cluster_config.yaml` | 集群配置 | 集群队列、资源限制、任务调度参数 |
+| `config.yaml` | Main Config | Pipeline toggles, output settings, Peak Calling strategy. |
+| `reference.yaml` | Reference Genome | Paths to indices, GTF, GFF, chromosome info, etc. |
+| `run_parameter.yaml` | Runtime Parameters | Threads, software parameters, script paths, thresholds. |
+| `cluster_config.yaml` | Cluster Config | Queues, resource limits, job scheduling parameters. |
 
-#### config.yaml - 主配置文件
+#### config.yaml - Main Configuration
 
-控制流程的整体行为和开关：
+Controls the overall behavior of the pipeline:
 
 ```yaml
 # Pipeline Control Flags
-print_target: false     # 调试模式：打印目标文件列表
-print_sample: false     # 调试模式：打印样本信息
-log_level: INFO         # 日志级别
-bam_remove: true        # 是否清理中间BAM文件
-only_qc: false          # 仅运行QC分析（跳过差异分析）
+print_target: false     # Debug mode: Print target file list
+print_sample: false     # Debug mode: Print sample info
+log_level: INFO         # Logging level
+bam_remove: true        # Clean up intermediate BAM files
+only_qc: false          # Only run QC analysis (skip differential analysis)
 
-# 比对工具选择 (v0.0.5)
-mapping_tools: bowtie2   # 可选: bowtie2 (经典、精细控制), chromap (快速、大规模优化)
+# Alignment Tool Selection (v0.0.5)
+mapping_tools: bowtie2   # Options: bowtie2 (classic), chromap (fast/large-scale)
 
-# Peak Calling 配置 (v0.0.5新增)
+# Peak Calling Config (v0.0.5 New)
 peak_calling:
-  use_pooled_peaks: true  # 使用pooled peaks进行DEG分析
+  use_pooled_peaks: true  # Use pooled peaks for DEG analysis
 ```
 
-#### reference.yaml - 参考基因组配置
+#### reference.yaml - Reference Genome Configuration
 
-使用独立的 index 目录配置，便于索引的快速迁移：
+Uses an independent index directory configuration for easy migration:
 
 ```yaml
-# 示例：人类基因组配置
+# Example: Human genome configuration
 hg38:
-  index: /path/to/bowtie2/hg38  # 基因组索引目录
+  index: /path/to/bowtie2/hg38  # Genome index directory
   genome_fa: /path/to/genome/hg38.fa
   genome_gtf: /path/to/annotation/genes.gtf
-  # ... 其他物种特异文件
+  # ... Other species-specific files
 ```
 
-> **设计思路**：将索引路径集中配置在 reference.yaml 中，当需要迁移到新服务器或新项目时，只需修改此文件即可，无需修改代码或重新构建索引。
+> **Design Note**: By centralizing index paths in `reference.yaml`, you can migrate to a new server or project by updating this single file without rebuilding indices.
 
-#### run_parameter.yaml - 运行时参数
+#### run_parameter.yaml - Runtime Parameters
 
-包含所有软件运行时的可调整参数，可通过修改此文件快速调整分析行为：
+Contains adjustable parameters for all software used in the pipeline:
 
 ```yaml
 parameter:
   threads:
-    macs2: 8              # MACS2线程数
-    homer: 10             # HOMER线程数
-    featurecounts: 16     # featureCounts线程数
+    macs2: 8              # MACS2 threads
+    homer: 10             # HOMER threads
+    featurecounts: 16     # featureCounts threads
   macs2:
-    qvalue: 0.05          # PeakCalling显著性阈值
+    qvalue: 0.05          # Peak Calling significance threshold
   DEG:
-    LFC: 1                # 差异分析log2FoldChange阈值
-    PVAL: 0.05            # 差异分析p值阈值
-  # ... 更多参数
+    LFC: 1                # log2FoldChange threshold for differential analysis
+    PVAL: 0.05            # p-value threshold for differential analysis
+  # ... More parameters
 ```
 
-#### cluster_config.yaml - 集群配置
+#### cluster_config.yaml - Cluster Configuration
 
-适配不同集群环境的资源配置：
+Resource allocation for different cluster environments:
 
 ```yaml
 __default__:
@@ -541,68 +646,63 @@ macs2:
   time: "2-0:00:00"
 ```
 
-### 配置文件加载顺序
+### Configuration Loading Order
 
-Snakemake 按以下顺序加载配置文件（后者覆盖前者）：
+Snakemake loads configuration files in the following order (later ones override earlier ones):
 
 1. `config.yaml` → 2. `reference.yaml` → 3. `run_parameter.yaml` → 4. `cluster_config.yaml`
 
-可通过 `--config` 参数在命令行覆盖：
+Commands can be overridden via the `--config` parameter on the CLI.
 
-## 🧠 流程设计哲学
+## 🧠 Pipeline Design Philosophy
 
-ATACFlow遵循以下设计理念：
+ATACFlow adheres to the following design principles:
 
-1. **模块化设计**: 每个分析步骤都是独立的模块，便于维护和扩展
-2. **质量优先**: 严格的质控和过滤步骤确保分析结果的可靠性
-3. **植物学优化**: 针对植物基因组特点进行特殊优化处理
-4. **自动化交付**: 自动生成完整的分析报告和交付清单
-5. **可重现性**: 使用Snakemake确保分析流程的可重现性
+1. **Modular Design**: Each step is an independent module, making maintenance and expansion easy.
+2. **Quality First**: Rigorous QC and filtering steps ensure reliable results.
+3. **Botanical Optimization**: Specialized handling for plant genome characteristics.
+4. **Automated Delivery**: Automatically generates complete reports and delivery manifests.
+5. **Reproducibility**: Uses Snakemake to ensure analysis can be perfectly reproduced.
 
-## 🗺️ 路线图与未来改进 (Roadmap)
+## 🗺️ Roadmap and Future Improvements
 
-为了进一步提升流程的稳健性和科学性，计划在后续版本中引入以下改进：
+Planned enhancements for future versions:
 
-### 已有计划
-1.  **IDR (Irreproducible Discovery Rate) 支持**: 引入 ENCODE 推荐的 IDR 框架，定量评估生物学重复之间的一致性，为 Peak 过滤提供更严谨的统计学依据。
-2.  **自动 Blacklist 过滤**: 针对常见物种（如人、小鼠、拟南芥等）集成 ENCODE Blacklist 自动过滤步骤，剔除已知的信号伪影区域。
-3.  **动态 QC 阈值预警**: 在 MultiQC 报告中集成基于 `ataqv` 指标（如 TSS Enrichment Score, Fragment Length Distribution）的自动判定系统，对低质量样本进行实时报警。
-4.  **调控网络增强**: 深化 TOBIAS 结果与 DEG 结果的关联分析，构建更精细的 TF-Target 基因调控网络。
+### Existing Plans
+1.  **IDR (Irreproducible Discovery Rate) Support**: Integrate the ENCODE-recommended IDR framework to quantitatively assess consistency between biological replicates.
+2.  **Automatic Blacklist Filtering**: Integrate ENCODE Blacklist filtering for common species (Human, Mouse, Arabidopsis) to remove known signal artifacts.
+3.  **Dynamic QC Alerts**: Integrate an automated warning system in MultiQC reports based on `ataqv` metrics (e.g., TSS Enrichment, Fragment Length Distribution).
+4.  **Regulatory Network Enhancement**: Deepen correlation analysis between TOBIAS results and DEG results to build refined TF-Target gene regulatory networks.
 
-### 与 nf-core/atacseq 对比后的新增优化方向
+### New Optimization Directions (Inspired by nf-core/atacseq)
 
-#### 🔴 高优先级
-1.  **差异可及性分析模块**: 集成 DESeq2/edgeR 进行组间差异可及性分析，包括 PCA 聚类、差异 peak 鉴定和可视化。
-2.  **容器化支持**: 增加 Docker/Singularity 容器支持，与 Conda 环境并存，提高流程的可重复性和跨平台部署能力。
-3.  **精细化 BAM 过滤策略**: 参考 nf-core 的详尽过滤策略，增加：
-    - 错配数限制（>4 mismatches）过滤
-    - soft-clipped reads 过滤
-    - 插入大小限制（>2kb）过滤
-    - 染色体间配对 reads 过滤
-    - FR 方向验证
+#### 🔴 High Priority
+1.  **Differential Accessibility Module**: Integrate DESeq2/edgeR for group-level differential accessibility analysis, including PCA clustering and visualization.
+2.  **Containerization**: Add Docker/Singularity support alongside Conda for better portability and platform-independent deployment.
+3.  **Refined BAM Filtering**: Implement exhaustive filtering strategies including mismatch limits (>4), soft-clipped read removal, and fragment size limits (>2kb).
 
-#### 🟡 中优先级
-4.  **IGV 会话文件自动生成**: 自动创建包含 bigWig  tracks、peaks 和差异位点的 IGV 会话文件，方便用户直接可视化。
-5.  **测试数据集与 CI/CD**: 添加完整的测试数据集和自动化测试流程，确保流程更新的稳健性。
-6.  **扩展比对工具选择**: 增加 BWA 和 STAR 作为可选比对工具，提供更多选择。
+#### 🟡 Medium Priority
+4.  **IGV Session Auto-generation**: Automatically create IGV session files containing BigWig tracks, peaks, and differential sites for easy visualization.
+5.  **Test Datasets & CI/CD**: Add complete test datasets and automated testing to ensure pipeline robustness during updates.
+6.  **Expanded Alignment Options**: Add BWA and STAR as optional alignment tools.
 
-#### 🟢 低优先级
-7.  **模块化重构**: 将常用分析步骤抽象为可复用模块，便于跨项目共享和维护。
-8.  **多工作流系统支持**: 评估 Nextflow 版本的可行性，与现有 Snakemake 版本并存。
+#### 🟢 Low Priority
+7.  **Modular Refactoring**: Abstract common steps into reusable modules for cross-project sharing.
+8.  **Multi-Workflow Support**: Evaluate Nextflow version feasibility to coexist with the current Snakemake version.
 
-## 🚀 使用方法
+## 🚀 Usage
 
-### 1. 环境要求
+### 1. Environment Requirements
 
 - Python >= 3.10
 - Snakemake >= 9.9.0
-- Mamba (推荐) 或 Conda
+- Mamba (Recommended) or Conda
 
-### 2. 配置文件准备
+### 2. Configuration File Preparation
 
-#### 2.1 创建样本信息表
+#### 2.1 Create Sample Sheet
 
-创建 CSV 文件，包含以下列：
+Create a CSV file with the following columns:
 
 ```csv
 sample,sample_name,group
@@ -612,48 +712,48 @@ SRR003,Mut_Rep1,Mut
 SRR004,Mut_Rep2,Mut
 ```
 
-#### 2.2 创建对比组配置
+#### 2.2 Create Contrast Configuration
 
-创建 contrasts.csv 文件：
+Create a `contrasts.csv` file:
 
 ```csv
 contrast,treatment
 WT,Mut
 ```
 
-#### 2.3 修改主配置文件
+#### 2.3 Modify Main Configuration
 
-编辑 `config/config.yaml`：
+Edit `config/config.yaml`:
 
 ```yaml
 project_name: 'Your_Project_Name'
-Genome_Version: "hg38"  # 或其他支持的基因组
+Genome_Version: "hg38"  # Or other supported genomes
 species: 'Homo_sapiens'
 client: 'Your_Lab_Name'
 
-# 数据路径
+# Data Paths
 raw_data_path:
   - /path/to/raw_data
 sample_csv: /path/to/samples.csv
 paired_csv: /path/to/contrasts.csv
 
-# 工作目录和输出目录
+# Working and Output Directories
 workflow: /path/to/workflow_dir
 data_deliver: /path/to/output_dir
 
-# 比对工具设置 (v0.0.5)
-# 默认使用 chromap（快速、适合大规模数据）
-# 如需更精细的控制或兼容性，可改为 bowtie2
-mapping_tools: chromap  # 可选: chromap (默认), bowtie2
+# Alignment Tool Settings (v0.0.5)
+# Default: chromap (Fast, good for large data)
+# For finer control, use: bowtie2
+mapping_tools: chromap  # Options: chromap (default), bowtie2
 
-# Peak Calling 策略 (v0.0.5)
+# Peak Calling Strategy (v0.0.5)
 peak_calling:
-  use_pooled_peaks: true  # true: 使用 pooled peaks, false: 使用单样本共识
+  use_pooled_peaks: true  # true: Use pooled peaks, false: Use single sample consensus
 ```
 
-#### 2.4 检查参考基因组配置
+#### 2.4 Check Reference Configuration
 
-确认 `config/reference.yaml` 中包含您的基因组配置：
+Ensure `config/reference.yaml` contains your genome settings:
 
 ```yaml
 Bowtie2_index:
@@ -661,12 +761,12 @@ Bowtie2_index:
     index: path/to/hg38_index
     genome_fa: path/to/hg38.fa
     genome_gtf: path/to/hg38.gtf
-    # ... 其他路径
+    # ... Other paths
 ```
 
-### 3. 运行流程
+### 3. Running the Pipeline
 
-#### 3.1 标准运行（本地）
+#### 3.1 Standard Local Execution
 
 ```bash
 cd /home/zj/pipeline/ATACFlow
@@ -680,31 +780,31 @@ snakemake --cores=80 \
   --config analysisyaml=/path/to/your/config.yaml
 ```
 
-**参数说明：**
-- `--cores=80`: 使用的 CPU 核心数，根据服务器配置调整
-- `-p`: 打印执行的 shell 命令
-- `--conda-frontend mamba`: 使用 mamba 作为 conda 前端（比 conda 更快）
-- `--use-conda`: 自动管理软件依赖
-- `--rerun-triggers mtime`: 基于文件修改时间决定是否重新运行
-- `--logger rich-loguru`: 使用美观的日志输出
-- `--config analysisyaml=...`: 指定分析配置文件
+**Parameters:**
+- `--cores=80`: CPU cores to use.
+- `-p`: Print executed shell commands.
+- `--conda-frontend mamba`: Use Mamba for faster dependency management.
+- `--use-conda`: Manage software dependencies automatically.
+- `--rerun-triggers mtime`: Rerun tasks based on file modification time.
+- `--logger rich-loguru`: Beautiful logging output.
+- `--config analysisyaml=...`: Path to your specific analysis config.
 
-#### 3.2 指定目标运行（仅运行特定步骤）
+#### 3.2 Target-specific Execution (Run specific steps)
 
 ```bash
-# 仅运行质控
+# Only run QC
 snakemake --cores=20 --use-conda 01.qc/short_read_qc_r1
 
-# 仅运行 peak calling
+# Only run Peak Calling
 snakemake --cores=40 --use-conda 03.peak_calling
 
-# 仅运行差异分析
+# Only run Differential Analysis
 snakemake --cores=20 --use-conda 06.deg_enrich
 ```
 
-#### 3.3 集群环境运行
+#### 3.3 Cluster Execution
 
-修改 `config/config.yaml` 中的 `execution_mode` 为 `cluster`，然后：
+Set `execution_mode: cluster` in `config/config.yaml`, then:
 
 ```bash
 snakemake --cores=1000 \
@@ -715,77 +815,56 @@ snakemake --cores=1000 \
   --config analysisyaml=/path/to/your/config.yaml
 ```
 
-#### 3.4 调试模式
+#### 3.4 Debug Mode
 
 ```bash
-# 查看将要执行的任务而不实际运行
+# Dry run: Show tasks without executing
 snakemake --cores=1 --dry-run --use-conda
 
-# 打印 DAG 图
+# Generate Workflow DAG
 snakemake --dag | dot -Tsvg > workflow.svg
 ```
 
-### 4. 检查结果
+### 4. Checking Results
 
-#### 4.1 查看日志
+#### 4.1 Check Logs
 
 ```bash
-# 查看特定步骤的日志
+# Check log for a specific step
 cat logs/03.peak_calling/single/macs2_SRR001.log
 
-# 查看完整日志
+# Check overall log
 tail -f .snakemake/log/*.log
 ```
 
-#### 4.2 查看 MultiQC 报告
+#### 4.2 MultiQC Report
 
-流程完成后，在 `01.qc/` 或 `05.ATAC_QC/` 目录下查看 `multiqc_report.html`
+View `multiqc_report.html` in `01.qc/` or `05.ATAC_QC/` after completion.
 
-#### 4.3 检查交付结果
+#### 4.3 Check Delivered Results
 
 ```bash
 ls -lh /path/to/output_dir/
 ```
 
-### 5. 常见问题
+### 5. FAQ
 
-**Q: 如何使用不同的比对工具？**
+**Q: How do I switch alignment tools?**
+A: Set `mapping_tools: chromap` or `mapping_tools: bowtie2` in `config/config.yaml`.
 
-A: 在 `config/config.yaml` 中设置：
-```yaml
-mapping_tools: chromap  # 可选: chromap, bowtie2
-```
+**Q: How do I run only QC and skip differential analysis?**
+A: Set `only_qc: true` in `config/config.yaml`.
 
-**Q: 如何只运行 QC 不运行差异分析？**
+**Q: How do I skip FastQ Screen?**
+A: Set `fastq_screen: false` in `config/config.yaml`.
 
-A: 在 `config/config.yaml` 中设置：
-```yaml
-only_qc: true
-```
+**Q: How do I adjust Peak Calling parameters?**
+A: Modify `qvalue` or `LFC` thresholds in `config/run_parameter.yaml`.
 
-**Q: 如何跳过 FastQ Screen？**
-
-A: 在 `config/config.yaml` 中设置：
-```yaml
-fastq_screen: false
-```
-
-**Q: Peak calling 参数如何调整？**
-
-A: 在 `config/run_parameter.yaml` 中修改：
-```yaml
-parameter:
-  macs2:
-    qvalue: 0.01  # 更严格的 qvalue
-  DEG:
-    LFC: 1.5     # 更高的 log2FoldChange 阈值
-    PVAL: 0.01    # 更严格的 pvalue 阈值
-```
-
-### 6. 示例完整命令
+### 6. Example Commands
 
 ```bash
-# 示例 1: 人源 ATAC-seq 数据完整分析
+# Example 1: Full Human ATAC-seq Analysis
 snakemake --cores=80 \
   -p \
   --conda-frontend mamba \
@@ -794,7 +873,7 @@ snakemake --cores=80 \
   --logger rich-loguru \
   --config analysisyaml=/data/jzhang/project/Temp/atac_human_PRJNA427322/01.workflow/config.yaml
 
-# 示例 2: 植物 ATAC-seq 数据分析
+# Example 2: Plant ATAC-seq Analysis
 snakemake --cores=60 \
   -p \
   --conda-frontend mamba \
@@ -803,7 +882,7 @@ snakemake --cores=60 \
   --logger rich-loguru \
   --config analysisyaml=/data/jzhang/project/Temp/lettuce_v11_analysis/01.workflow/config.yaml
 
-# 示例 3: 仅运行 QC（快速测试）
+# Example 3: QC Only (Quick Test)
 snakemake --cores=20 \
   -p \
   --use-conda \
