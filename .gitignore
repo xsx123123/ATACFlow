@@ -19,3 +19,19 @@ target
 ./deps
 ./incremental
 */Compile_release
+atacflow_runs.db
+
+# MCP Server specific
+mcp/data/
+mcp/logs/
+mcp/.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/

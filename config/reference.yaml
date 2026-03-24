@@ -8,6 +8,14 @@ can_use_genome_version:
   - Lsat_Salinas_v11
   - hg38
   - GO
+# MCP Genome Version
+mcp_genome_version: 
+  Lsat_Salinas_v11:
+    name: Lsat_Salinas_v11
+    description: Lettuce reference genome (v11)
+  hg38:
+    name: hg38
+    description: Human reference genome (GRCh38)
 # Bowtie2 Reference PATH
 Bowtie2_index:
     Lsat_Salinas_v11:
