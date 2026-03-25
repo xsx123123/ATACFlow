@@ -20,14 +20,25 @@
 
 ### 前置要求
 - Python 3.13+
-- uv (包管理器)
+- **uv (包管理器) - 必须先在服务器上安装**
 - conda/mamba (用于运行 Snakemake)
 - Node.js (可选，用于 MCP Inspector 测试)
 
-### 1. 安装 uv (如果未安装)
+### 1. 安装 uv (如果服务器未安装)
+**重要**：uv 必须在运行 MCP 服务器的机器上安装。如果使用远程部署，请确保在远程服务器上安装 uv。
+
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
+
+### 验证 uv 安装
+安装完成后，验证 uv 是否可用：
+```bash
+which uv
+uv --version
+```
+
+如果 uv 安装在 pyenv 等环境管理工具中，请记录其绝对路径（例如：`/home/zj/.pyenv/shims/uv`），在 SSH 配置时需要使用。
 
 ### 2. 安装项目依赖
 ```bash
