@@ -50,8 +50,11 @@ def check_conda_environment(env_name: Optional[str] = None) -> Dict[str, Any]:
                     [conda_bin, "run", "-n", env_name, "snakemake", "--version"],
                     capture_output=True,
                     text=True,
-                    timeout=10,
+                    timeout=15,  # Increased timeout for robustness
                 )
+            except subprocess.TimeoutExpired:
+                logger.warning(f"Snakemake version check timed out for env: {env_name}")
+                snakemake_available = False
                 snakemake_available = result.returncode == 0
             except:
                 pass
