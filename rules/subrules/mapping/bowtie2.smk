@@ -42,7 +42,8 @@ rule Bowtie2_mapping:
     conda:
         workflow.source_path("../../../envs/bowtie2.yaml"),
     log:
-        "logs/02.mapping/Bowtie2_{sample}.log",
+        stats = "logs/02.mapping/Bowtie2_{sample}.stats.log",
+        err = "logs/02.mapping/Bowtie2_{sample}.err.log",
     message:
         "Running Bowtie2 mapping on {wildcards.sample} R1 and R2",
     benchmark:
@@ -53,13 +54,15 @@ rule Bowtie2_mapping:
         config['parameter']['threads']['bowtie2'],
     shell:
         """
-        ( ulimit -n 65535 && bowtie2 \
-                -p {threads} \
-                -X 2000 \
-                --very-sensitive \
-                --no-mixed \
-                --no-discordant \
-                -x {params.index} \
-                -1 {input.r1} \
-                -2 {input.r2} | samtools view -bS - > {output.bam} ) &> {log}
+        ulimit -n 65535 2>/dev/null || true
+        bowtie2 \
+            -p {threads} \
+            -X 2000 \
+            --very-sensitive \
+            --no-mixed \
+            --no-discordant \
+            -x {params.index} \
+            -1 {input.r1} \
+            -2 {input.r2} 2> {log.stats} | \
+        samtools view -b - > {output.bam} 2> {log.err}
         """
