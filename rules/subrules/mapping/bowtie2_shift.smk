@@ -29,8 +29,10 @@ rule atac_seq_shift:
     in the ATAC-seq workflow.
     """
     input:
-        bam = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam',
-        bai = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam.bai' 
+        # bam = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam',
+        # bai = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam.bai'
+        bam = '02.mapping/filtered/{sample}.clean.bam',
+        bai = '02.mapping/filtered/{sample}.clean.bam.bai'
     output:
         shifted_bam = '02.mapping/shifted/{sample}.shifted.bam',
         shifted_sort_bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',

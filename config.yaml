@@ -15,7 +15,6 @@ data_deliver: /data/jzhang/project/Temp/atac_human_PRJNA427322/02.data_deliver
 # wheather run in HPC Cluster
 execution_mode: local #local,cluster
 queue_id: default
-mapping_tools: chromap #chromap,bowtie2
 # Fragment Library Types
 Library_Types: fr-firststrand # fr-unstranded,fr-firststrand,fr-secondstrand
 # only run QC for ATAC-seq

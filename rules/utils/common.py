@@ -9,7 +9,11 @@ from pathlib import Path
 from typing import Dict, Union, List, Callable
 from rich import print as rich_print
 from snakemake.io import expand
-from loguru import logger
+try:
+    from snakemake_logger_plugin_rich_loguru import get_analysis_logger
+    logger = get_analysis_logger()
+except Exception:
+    from loguru import logger
 
 
 from utils.datadeliver import (
@@ -26,8 +30,8 @@ from utils.datadeliver import (
 )
 
 
-# Initialize global variable for QC warning
-_qc_warning_logged = False
+from functools import partial
+
 
 def DataDeliver(
     config: Dict = None,
@@ -80,41 +84,14 @@ def DataDeliver(
     deep_qc_flags = ["bamCoverage"]
     downstream_modules = ["diff_peaks"]
 
-    def execute_qc_clean(samples, data_deliver):
-        return qc_clean(samples, data_deliver)
-
-    def execute_mapping(samples, data_deliver, config):
-        return mapping(samples, data_deliver, config)
-
-    def execute_peak_calling(samples, data_deliver):
-        return peak_calling(samples, data_deliver)
-
-    def execute_motif_analysis(samples, data_deliver):
-        return motif_analysis(samples, data_deliver)
-
-    def execute_consensus_peaks(samples, data_deliver):
-        return consensus_peaks(samples, data_deliver)
-
-    def execute_diff_peaks(samples, data_deliver):
-        return diff_peaks(samples, data_deliver, run_pooled)
-
-    def execute_atac_qc(samples, data_deliver):
-        return atac_qc(samples, data_deliver, run_pooled)
-
-    def execute_merge_group_analysis(groups, data_deliver):
-        return merge_group_analysis(groups, data_deliver)
-
-    module_functions: Dict[str, Callable] = {
-        "qc_clean": execute_qc_clean,
-        "mapping": execute_mapping,
-        "peak_calling": execute_peak_calling,
-        "motif_analysis": execute_motif_analysis,
-        "consensus_peaks": execute_consensus_peaks,
-        "diff_peaks": execute_diff_peaks,
-        "atac_qc": execute_atac_qc,
+    # Module dependency definitions: downstream -> required upstream modules
+    MODULE_DEPENDENCIES = {
+        "peak_calling": ["mapping"],
+        "motif_analysis": ["peak_calling"],
+        "consensus_peaks": ["peak_calling"],
+        "diff_peaks": ["consensus_peaks"],
+        "atac_qc": ["mapping"],
     }
-
-    global _qc_warning_logged
 
     # Use a local dictionary to track enabled modules to avoid side effects on global config
     run_modules = {}
@@ -126,7 +103,7 @@ def DataDeliver(
         run_modules[flag] = config.get(flag) is not False
 
     if config.get("only_qc"):
-        if not _qc_warning_logged:
+        if not getattr(DataDeliver, "_qc_warning_logged", False):
             logger.warning(
                 "**********************************************************************"
             )
@@ -143,7 +120,7 @@ def DataDeliver(
                 "**********************************************************************"
             )
             time.sleep(1)
-            _qc_warning_logged = True
+            DataDeliver._qc_warning_logged = True
 
         for module in downstream_modules:
             run_modules[module] = False
@@ -152,15 +129,34 @@ def DataDeliver(
         for module in downstream_modules:
             run_modules[module] = config.get(module) is not False
 
+    # Validate and auto-fix module dependencies
+    for module, deps in MODULE_DEPENDENCIES.items():
+        if run_modules.get(module):
+            for dep in deps:
+                if not run_modules.get(dep):
+                    logger.warning(
+                        f"Module '{module}' requires '{dep}' but it is disabled. "
+                        f"Auto-enabling '{dep}'."
+                    )
+                    run_modules[dep] = True
+
+    # Unified module function interface via partial binding
+    module_functions: Dict[str, Callable] = {
+        "qc_clean": qc_clean,
+        "mapping": partial(mapping, config=config),
+        "peak_calling": peak_calling,
+        "motif_analysis": motif_analysis,
+        "consensus_peaks": consensus_peaks,
+        "diff_peaks": partial(diff_peaks, run_pooled=run_pooled),
+        "atac_qc": partial(atac_qc, run_pooled=run_pooled),
+    }
+
     for module, func in module_functions.items():
         if run_modules.get(module):
-            if module == "mapping":
-                data_deliver = func(samples, data_deliver, config)
-            else:
-                data_deliver = func(samples, data_deliver)
+            data_deliver = func(samples, data_deliver)
 
     if run_pooled:
-        data_deliver = execute_merge_group_analysis(groups, data_deliver)
+        data_deliver = merge_group_analysis(groups, data_deliver)
 
     if config.get("print_target"):
         rich_print("[bold green]Generated Target Files:[/bold green]")
@@ -271,8 +267,8 @@ def judge_star_index(config: dict, Genome_Version: str) -> bool:
         star_config = config["STAR_index"][Genome_Version]
         index_dir = star_config["index"]
     except KeyError:
-        print(
-            f"Error: Genome Version '{Genome_Version}' not found in config or structure incorrect."
+        logger.error(
+            f"Genome Version '{Genome_Version}' not found in config or structure incorrect."
         )
         sys.exit(1)
 
@@ -312,11 +308,9 @@ def check_gene_version(config: dict = None, logger=None) -> None:
     """
     Check if the gene version in config matches allowed list.
     """
-    # Use the provided logger or get the unified logger
+    # Use the provided logger or the module-level logger
     if logger is None:
-        from snakemake_logger_plugin_rich_loguru import get_analysis_logger
-
-        logger = get_analysis_logger()
+        logger = globals()["logger"]
 
     try:
         version = config["Genome_Version"]

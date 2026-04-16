@@ -24,12 +24,12 @@ def qc_clean(samples: Dict = None, data_deliver: List = None) -> List:
     if data_deliver is None:
         data_deliver = []
 
-    data_deliver.append("01.qc/short_read_r1_multiqc/multiqc_r1_raw-data_report.html")
-    data_deliver.append("01.qc/short_read_r2_multiqc/multiqc_r2_raw-data_report.html")
+    data_deliver.append("01.qc/short_read_multiqc/multiqc_raw-data_report.html")
     data_deliver.append(
         "01.qc/multiqc_short_read_trim/multiqc_short_read_trim_report.html"
     )
     data_deliver.append("01.qc/multiqc_merge_qc/multiqc_merge_qc_report.html")
+    data_deliver.append("01.qc/fastq_screen_multiqc/multiqc_fastq_screen_report.html")
     return data_deliver
 
 

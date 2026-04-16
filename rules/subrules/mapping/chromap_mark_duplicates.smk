@@ -40,16 +40,22 @@ rule mark_duplicates_chromap:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam',
         bai = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam.bai',
     resources:
-        **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
+        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
+    conda:
+        workflow.source_path("../envs/gatk.yaml")
     log:
         "logs/02.mapping/gatk/mark_dup_{sample}.log"
     benchmark:
         "benchmarks/02.mapping/gatk/mark_dup_{sample}.txt"
     threads: 
-        1
+        2
     shell:
         """
-        ln -s -r {input.bam} {output.bam} \
-        && ln -s -r {input.bai} {output.bai} \
-        && echo "Created symlink: {output.bam} -> {input.bam}" >> {log} 
+        gatk --java-options "{params.java_opts}" MarkDuplicates \
+                -I {input.bam} \
+                -O {output.bam} \
+                -M {output.metrics} \
+                --CREATE_INDEX true \
+                --MAX_RECORDS_IN_RAM 5000000 \
+                --SORTING_COLLECTION_SIZE_RATIO 0.5 2>> {log}
         """

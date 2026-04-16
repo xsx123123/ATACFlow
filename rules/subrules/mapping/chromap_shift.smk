@@ -32,16 +32,25 @@ rule atac_seq_shift:
         bam = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam',
         bai = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam.bai' 
     output:
+        shifted_bam = '02.mapping/shifted/{sample}.shifted.bam',
         shifted_sort_bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',
         shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai'
     log:
         "logs/02.mapping/atac_seq_shift_{sample}.log"
     resources:
-        **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
+        **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
+    conda:
+        workflow.source_path("../envs/deeptools.yaml")
     threads:
-        1
+        20
     shell:
         """
-        (ln -s -r {input.bam} {output.shifted_sort_bam}
-        ln -s -r {input.bai} {output.shifted_sort_bam_bai} )  & > {log}
+        # 1. 执行偏移
+        alignmentSieve -b {input.bam} -o {output.shifted_bam} --ATACshift -p {threads} 2>> {log}
+            
+        # 2. 排序
+        samtools sort -@ {threads} {output.shifted_bam} -o {output.shifted_sort_bam} 2>> {log}
+            
+        # 3. 建立索引
+        samtools index {output.shifted_sort_bam} 2>> {log}
         """

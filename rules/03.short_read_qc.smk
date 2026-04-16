@@ -31,8 +31,8 @@ rule short_read_qc_r1:
                                       config['convert_md5'],
                                       "{sample}/{sample}_R1.fq.gz"),
     output:
-        r1_html = "01.qc/short_read_qc_r1/{sample}_R1_fastqc.html",
-        r1_zip = "01.qc/short_read_qc_r1/{sample}_R1_fastqc.zip",
+        r1_html = "01.qc/short_read_qc/{sample}_R1_fastqc.html",
+        r1_zip = "01.qc/short_read_qc/{sample}_R1_fastqc.zip",
     resources:
         **rule_resource(config,'low_resource', skip_queue_on_local=True,logger = logger),
     conda:
@@ -40,7 +40,7 @@ rule short_read_qc_r1:
     log:
         "logs/01.qc/r1_fastqc_{sample}.log",
     params:
-        out_dir = "01.qc/short_read_qc_r1/",
+        out_dir = "01.qc/short_read_qc/",
         r1 = "00.link_dir/{sample}/{sample}_R1.fq.gz",
     message:
         "Running FastQC on {wildcards.sample} r1",
@@ -81,8 +81,8 @@ rule short_read_qc_r2:
                                       config['convert_md5'],
                                       "{sample}/{sample}_R2.fq.gz"),
     output:
-        r2_html = "01.qc/short_read_qc_r2/{sample}_R2_fastqc.html",
-        r2_zip = "01.qc/short_read_qc_r2/{sample}_R2_fastqc.zip",
+        r2_html = "01.qc/short_read_qc/{sample}_R2_fastqc.html",
+        r2_zip = "01.qc/short_read_qc/{sample}_R2_fastqc.zip",
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     conda:
@@ -90,7 +90,7 @@ rule short_read_qc_r2:
     log:
         "logs/01.qc/r2_fastqc_{sample}.log",
     params:
-        out_dir = "01.qc/short_read_qc_r2",
+        out_dir = "01.qc/short_read_qc",
         r2 = "00.link_dir/{sample}/{sample}_R2.fq.gz",
     message:
         "Running FastQC on {wildcards.sample} r2",
@@ -106,7 +106,7 @@ rule short_read_qc_r2:
         """
 
 # logger.info('Run MultiQC to summarize R1 fastqc QC reports')
-rule short_read_multiqc_r1:
+rule short_read_multiqc:
     """
     Aggregate R1 FastQC reports into a unified quality control summary using MultiQC.
 
@@ -129,24 +129,24 @@ rule short_read_multiqc_r1:
     inclusion or exclusion in downstream analyses.
     """
     input:
-        fastqc_files_r1 = expand("01.qc/short_read_qc_r1/{sample}_R1_fastqc.zip", sample=samples.keys()),
+        fastqc_files_r1 = expand("01.qc/short_read_qc/{sample}_R1_fastqc.zip", sample=samples.keys()),
     output:
-        report_dir = "01.qc/short_read_r1_multiqc/multiqc_r1_raw-data_report.html",
+        report_dir = "01.qc/short_read_multiqc/multiqc_raw-data_report.html",
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     conda:
         workflow.source_path("../envs/multiqc.yaml"),
     message:
-        "Running MultiQC to aggregate R1 FastQC reports",
+        "Running MultiQC to aggregate FastQC reports",
     params:
-        fastqc_reports = "01.qc/short_read_qc_r1",
-        multiqc_dir = '01.qc/short_read_r1_multiqc/',
-        report = "multiqc_r1_raw-data_report.html",
-        title = "r1-raw-data-multiqc-report",
+        fastqc_reports = "01.qc/short_read_qc",
+        multiqc_dir = '01.qc/short_read_multiqc/',
+        report = "multiqc_raw-data_report.html",
+        title = "raw-data-multiqc-report",
     log:
-        "logs/01.qc/multiqc_r1.log",
+        "logs/01.qc/multiqc.log",
     benchmark:
-        "benchmarks/01.qc/multiqc_r1.txt",
+        "benchmarks/01.qc/multiqc.txt",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:
@@ -154,58 +154,6 @@ rule short_read_multiqc_r1:
         multiqc {params.fastqc_reports} \
                 --force \
                 --outdir {params.multiqc_dir} \
-                -i {params.title} \
-                -n {params.report} &> {log}
-        """
-
-# logger.info('Run MultiQC to summarize R2 fastqc QC reports')
-rule short_read_multiqc_r2:
-    """
-    Aggregate R2 FastQC reports into a unified quality control summary using MultiQC.
-
-    This rule collects all individual R2 FastQC reports and synthesizes them into
-    a single interactive HTML report, providing a comprehensive view of reverse read
-    quality across all samples. This report complements the R1 MultiQC report and
-    together they provide a complete assessment of paired-end sequencing quality.
-
-    Comparing R1 and R2 MultiQC reports side-by-side enables:
-    - Detection of read direction-specific quality patterns
-    - Identification of systematic biases affecting only one read direction
-    - Assessment of how trimming may differentially affect R1 vs R2 reads
-    - Comprehensive evaluation of overall paired-end library quality
-
-    The report includes all standard MultiQC visualizations and statistics, making
-    it easy to spot trends, outliers, and potential issues that might impact
-    downstream analysis. This aggregated view is essential for quality assurance
-    and provides a clear audit trail of data quality for publication purposes.
-    """
-    input:
-        fastqc_files_r2 = expand("01.qc/short_read_qc_r2/{sample}_R2_fastqc.zip", sample=samples.keys()),
-    output:
-        report = "01.qc/short_read_r2_multiqc/multiqc_r2_raw-data_report.html",
-    resources:
-        **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
-    conda:
-        workflow.source_path("../envs/multiqc.yaml"),
-    message:
-        "Running MultiQC to aggregate R2 FastQC reports",
-    params:
-        fastqc_reports = "01.qc/short_read_qc_r2",
-        report_dir = "01.qc/short_read_r2_multiqc/",
-        multiqc_dir = '01.qc/short_read_r2_multiqc/',
-        report = "multiqc_r2_raw-data_report.html",
-        title = "r2-raw-data-multiqc-report",
-    log:
-        "logs/01.qc/multiqc_r2.log",
-    benchmark:
-        "benchmarks/01.qc/multiqc_r2.txt",
-    threads:
-        config['parameter']['threads']['multiqc'],
-    shell:
-        """
-        multiqc {params.fastqc_reports} \
-                --force \
-                --outdir {params.report_dir} \
                 -i {params.title} \
                 -n {params.report} &> {log}
         """

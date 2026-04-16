@@ -1,47 +1,15 @@
 #!/usr/bin/snakemake
 # -*- coding: utf-8 -*-
 import os
-
-def get_java_opts(wildcards, input, resources):
-    mem_gb = max(int(resources.mem_mb / 1024) - 4, 2)
-    if mem_gb > 50:
-        mem_gb = 20
-        return f"-Xmx{mem_gb}g -XX:+UseParallelGC -XX:ParallelGCThreads=4"
-    
-def get_blacklist_path(wildcards):
-    """
-    Get the blacklist path based on genome build
-    """
-    build = config.get("Genome_Version")
-    blacklist_dict = config.get('Bowtie2_index',{}).get(build,{}).get("blacklists", {})
-
-    if not blacklist_dict:
-        return ""
-    else:
-        blacklist_dir = os.path.join(config.get("reference_path"),blacklist_dict)
-    return blacklist_dir
-
-def get_organelle_names(wildcards):
-    build = config.get("Genome_Version")
-    genome_cfg = config.get("genome_info", {}).get(build, {})
-
-    org_list = []
-    for key in ["chrMID", "plast"]:
-        val = genome_cfg.get(key)
-        if val:
-            if isinstance(val, list): org_list.extend(val)
-            else: org_list.append(val)
-
-    # Return as space-separated string for easier shell processing
-    return " ".join(org_list) if org_list else ""
-
+from utils.tools import get_java_opts,get_blacklist_path,get_organelle_names
 # --------------- Mapping Rules --------------- #
-if config.get("mapping_tools","chromap") == "chromap":
-    include: "./subrules/mapping/chromap.smk"
-    logger.info("ATAC mapping powered by Chromap") 
-else:
-    include: "./subrules/mapping/bowtie2.smk"
-    logger.info("ATAC mapping powered by bowtie2") 
+# if config.get("mapping_tools","chromap") == "chromap":
+#    include: "./subrules/mapping/chromap.smk"
+#    logger.info("ATAC mapping powered by Chromap") 
+# else:
+#    include: "./subrules/mapping/bowtie2.smk"
+#    logger.info("ATAC mapping powered by bowtie2") 
+include: "./subrules/mapping/bowtie2.smk"
 # --------------- Mapping Rules --------------- #
 rule sorted_bam:
     """
@@ -280,18 +248,19 @@ rule add_read_groups:
         """
 
 # --------------- mark dup Rules --------------- #
-if config.get("mapping_tools","chromap") == "chromap":
-    include: "./subrules/mapping/chromap_mark_duplicates.smk"
-    logger.info("skiping ATAC mark dup for Chromap") 
-else:
-    include: "./subrules/mapping/bowtie2_mark_duplicates.smk"
-    logger.info("ATAC mark dup for bowtie2") 
+# if config.get("mapping_tools","chromap") == "chromap":
+#     include: "./subrules/mapping/chromap_mark_duplicates.smk"
+#     logger.info("skiping ATAC mark dup for Chromap") 
+# else:
+#     include: "./subrules/mapping/bowtie2_mark_duplicates.smk"
+#     logger.info("ATAC mark dup for bowtie2") 
+include: "./subrules/mapping/bowtie2_mark_duplicates.smk"
 # --------------- mark dup Rules --------------- #
-
 
 rule filter_blacklist_and_mito:
     """
-    Filter BAM files to remove blacklist regions, organellar reads, low mapping quality reads, and unwanted flags
+    Filter BAM files to remove blacklist regions, organellar reads,
+    low mapping quality reads, and unwanted flags
     """
     input:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam',
@@ -307,7 +276,8 @@ rule filter_blacklist_and_mito:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     params:
         mapq = 30,
-        flag_filter = 1804,
+        flag_filter = 1548,
+        flag_req = 2,
         blacklist = lambda wildcards: get_blacklist_path(wildcards),
         organelle_filter = lambda wildcards: " && ".join([f'rname != \\"{n}\\"' for n in get_organelle_names(wildcards).split()]) if get_organelle_names(wildcards) else "1"
     shell:
@@ -324,115 +294,74 @@ rule filter_blacklist_and_mito:
         # 直接在命令中使用 params.organelle_filter
         echo "Filter expression: {params.organelle_filter}" >> {log}
 
-        (samtools view -h -b -F {params.flag_filter} -q {params.mapq} -e "{params.organelle_filter}" {input.bam} | \
+        (samtools view -h -b -F {params.flag_filter} -f {params.flag_req} -q {params.mapq} -e "{params.organelle_filter}" {input.bam} | \
          eval "$FILTER_CMD" > {output.bam}) 2>> {log}
 
         samtools index {output.bam} >> {log} 2>&1
         """
 
-# rule refine_bam_strict:
+# rule filter_proper_pairs:
 #    """
-#    Apply strict filtering for ATAC-seq: insert size, mismatch count, soft clips
+#    Filter for properly paired reads and sort by name then by position.
+#
+#    This rule processes the filtered BAM files to retain only properly paired reads
+#    and performs coordinate-based sorting to prepare the data for downstream analyses.
+#    Properly paired reads are those where both ends of the DNA fragment map to the
+#    reference genome in the expected orientation and within a reasonable distance
+#    from each other.
+#
+#    Key processing steps:
+#    - Sort the input BAM file by read name to group paired reads together
+#    - Filter for properly paired reads using specialized filtering tools
+#    - Sort the resulting BAM file by genomic coordinates for downstream compatibility
+#    - Generate index files for rapid random access to genomic regions
+#
+#    This filtering step is critical for ATAC-seq analysis as it ensures that only
+#    high-quality, properly paired fragments are used for peak calling and other
+#    downstream analyses. Removing improperly paired reads improves the accuracy
+#    of fragment length estimation, insertion site analysis, and peak detection.
+#
+#   The coordinate-sorted output is compatible with downstream tools that require
+#    position-sorted input, such as peak callers, coverage analysis tools, and
+#    visualization software.
 #    """
 #    input:
 #        bam = '02.mapping/filtered/{sample}.clean.bam',
 #        bai = '02.mapping/filtered/{sample}.clean.bam.bai'
-#   output:
-#        bam = '02.mapping/refined/{sample}.strict.bam',
-#        bai = '02.mapping/refined/{sample}.strict.bam.bai'
+#    output:
+#        sort_name_bam = '02.mapping/filter_pe/{sample}.sort_name.bam',
+#        bam = '02.mapping/filter_pe/{sample}.filter_pe.bam',
+#        sort_bam = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam',
+#        sort_bam_bai = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam.bai'
 #    log:
-#        "logs/02.mapping/refine_strict_{sample}.log"
+#        "logs/02.mapping/filter_proper_pairs_{sample}.log"
 #    benchmark:
-#        "benchmarks/02.mapping/refine_strict_{sample}.txt"
+#        "benchmarks/02.mapping/filter_proper_pairs_{sample}.txt"
+#    resources:
+#        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
 #    conda:
 #        workflow.source_path("../envs/samtools.yaml")
-#    threads: 4
+#    threads: 10
 #    params:
-#        max_insert = 2000,   # Maximum insert size
-#        max_mismatch = 4     # Maximum allowed mismatches
+#        filter_pe = workflow.source_path(config['parameter']['filter_pe']['path']),
 #    shell:
 #        """
-#        echo "Starting Strict Filtering..." > {log}
-#
-#        samtools view -h -b -F 4 -@ {threads} \
-#        -e 'abs(tlen) <= {params.max_insert} && [NM] <= {params.max_mismatch} && ! (cigar =~ "S")' \
-#        {input.bam} \
-#        > {output.bam} 2>> {log}
-#
-#        echo "------------------------------------------------" >> {log}
-#        echo "Reads before refine:" >> {log}
-#        samtools view -c {input.bam} >> {log}
-#
-#        echo "Reads after refine:" >> {log}
-#        samtools view -c {output.bam} >> {log}
-#
-#        # Index the output
-#        samtools index -@ {threads} {output.bam} >> {log} 2>&1
+#         ( chmod +x {params.filter_pe} && \
+#        samtools sort -n -@ {threads} -o {output.sort_name_bam} {input.bam} && \
+#        {params.filter_pe} -t {threads} -i {output.sort_name_bam} -o {output.bam} && \
+#        samtools sort -@ {threads} {output.bam} -o {output.sort_bam} && \
+#        samtools index -@ {threads} {output.sort_bam} ) > {log} 2>&1
 #        """
 
-rule filter_proper_pairs:
-    """
-    Filter for properly paired reads and sort by name then by position.
-
-    This rule processes the filtered BAM files to retain only properly paired reads
-    and performs coordinate-based sorting to prepare the data for downstream analyses.
-    Properly paired reads are those where both ends of the DNA fragment map to the
-    reference genome in the expected orientation and within a reasonable distance
-    from each other.
-
-    Key processing steps:
-    - Sort the input BAM file by read name to group paired reads together
-    - Filter for properly paired reads using specialized filtering tools
-    - Sort the resulting BAM file by genomic coordinates for downstream compatibility
-    - Generate index files for rapid random access to genomic regions
-
-    This filtering step is critical for ATAC-seq analysis as it ensures that only
-    high-quality, properly paired fragments are used for peak calling and other
-    downstream analyses. Removing improperly paired reads improves the accuracy
-    of fragment length estimation, insertion site analysis, and peak detection.
-
-    The coordinate-sorted output is compatible with downstream tools that require
-    position-sorted input, such as peak callers, coverage analysis tools, and
-    visualization software.
-    """
-    input:
-        bam = '02.mapping/filtered/{sample}.clean.bam',
-        bai = '02.mapping/filtered/{sample}.clean.bam.bai'
-    output:
-        sort_name_bam = '02.mapping/filter_pe/{sample}.sort_name.bam',
-        bam = '02.mapping/filter_pe/{sample}.filter_pe.bam',
-        sort_bam = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam',
-        sort_bam_bai = '02.mapping/filter_pe/{sample}.filter_pe.sorted.bam.bai'
-    log:
-        "logs/02.mapping/filter_proper_pairs_{sample}.log"
-    benchmark:
-        "benchmarks/02.mapping/filter_proper_pairs_{sample}.txt"
-    resources:
-        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
-    conda:
-        workflow.source_path("../envs/samtools.yaml")
-    threads: 10
-    params:
-        filter_pe = workflow.source_path(config['parameter']['filter_pe']['path']),
-    shell:
-        """
-         ( chmod +x {params.filter_pe} && \
-        samtools sort -n -@ {threads} -o {output.sort_name_bam} {input.bam} && \
-        {params.filter_pe} -t {threads} -i {output.sort_name_bam} -o {output.bam} && \
-        samtools sort -@ {threads} {output.bam} -o {output.sort_bam} && \
-        samtools index -@ {threads} {output.sort_bam} ) > {log} 2>&1
-        """
-
-
 # --------------- tn5 shift Rules --------------- #
-if config.get("mapping_tools","chromap") == "chromap":
-    include: "./subrules/mapping/chromap_shift.smk"
-    logger.info("skiping bam tn5 shift for Chromap") 
-else:
-    include: "./subrules/mapping/bowtie2_shift.smk "
-    logger.info("ATAC bam tn5 shift for bowtie2") 
+# if config.get("mapping_tools","chromap") == "chromap":
+#     include: "./subrules/mapping/chromap_shift.smk"
+#     logger.info("skiping bam tn5 shift for Chromap") 
+# else:
+#     include: "./subrules/mapping/bowtie2_shift.smk "
+#     logger.info("ATAC bam tn5 shift for bowtie2") 
+include: "./subrules/mapping/bowtie2_shift.smk"
 # ---------------tn5 shift Rules --------------- #
-
 
 rule generate_bigwig_coverage:
     """

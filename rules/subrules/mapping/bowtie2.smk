@@ -50,14 +50,16 @@ rule Bowtie2_mapping:
         "benchmarks/{sample}_Bowtie2_benchmark.txt",
     params:
         index = config['Bowtie2_index'][config['Genome_Version']]['index'],
+        DNA_fragment_length = config['parameter']['bowtie2']['DNA_fragment_length'],
     threads:
         config['parameter']['threads']['bowtie2'],
     shell:
         """
         ulimit -n 65535 2>/dev/null || true
-        bowtie2 \
+        bowtie2 --local \
+            -k 1 \
             -p {threads} \
-            -X 2000 \
+            -X {params.DNA_fragment_length} \
             --very-sensitive \
             --no-mixed \
             --no-discordant \

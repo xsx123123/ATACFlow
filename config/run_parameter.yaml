@@ -32,6 +32,8 @@ parameter:
     conf: ../src/src/fastq_screen/fastq_screen.conf
     subset: 100000
     aligner: Bowtie2
+  bowtie2:
+    DNA_fragment_length: 1000  # animal: 700-1000, plant: 1000-2000
   filter_pe:
     path: ../src/src/ATACTools/filter_pe/target/release/filter_pe
   idr_scripts:

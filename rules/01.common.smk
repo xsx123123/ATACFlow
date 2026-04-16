@@ -19,12 +19,13 @@ import os
 import platform
 from datetime import datetime
 
+# Import the data delivery functions
 from utils.datadeliver import (
     qc_clean, mapping, peak_calling, motif_analysis, 
     consensus_peaks, diff_peaks, merge_group_analysis, atac_qc
 )
 
-
+# Import the common utility functions
 from utils.common import (
     DataDeliver,
     ReportData,

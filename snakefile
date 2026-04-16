@@ -34,7 +34,7 @@ resolve_reference_paths(config,
                         base_path=config.get('reference_path'))
 # Validate schema and file existence
 validate(config, "schema/config.schema.yaml")
-check_reference_paths(config.get("STAR_index", {}))
+check_reference_paths(config.get("Bowtie2_index", {}))
 # Get logger instance for validation
 from snakemake_logger_plugin_rich_loguru import get_analysis_logger
 logger = get_analysis_logger()
@@ -42,8 +42,11 @@ validate_genome_version(config=config, logger=logger)
 # Check analysis config species
 validate_species(config=config, logger=logger)
 # --------- 3. Workspaces & Samples --------- #
+# setting analysis workdir
 workdir: config["workflow"]
-merge_group,samples = load_samples(config["sample_csv"], required_cols=["sample", "sample_name", "group"],logger = logger)
+# Load samples and contrasts infor
+merge_group,samples = load_samples(config["sample_csv"],required_cols=["sample", "sample_name", "group"],
+                                   logger = logger)
 groups = parse_groups(samples)
 ALL_CONTRASTS, CONTRAST_MAP = load_contrasts(config["paired_csv"], samples)
 # --------- 4. Rules Import --------- #
@@ -59,9 +62,8 @@ include: 'rules/09.ATAC_QC.smk'
 include: 'rules/10.DEG.smk'
 include: 'rules/11.DEG_MERGE.smk'
 include: 'rules/12.motifs.smk'
-include: 'rules/13.Merge_qc.smk'
-include: 'rules/14.deliver.smk'
-include: 'rules/15.Report.smk'
+include: 'rules/13.deliver.smk'
+include: 'rules/14.Report.smk'
 # --------- 5. Target Rule --------- #
 run_pooled = config['peak_calling']['use_pooled_peaks'] and merge_group
 

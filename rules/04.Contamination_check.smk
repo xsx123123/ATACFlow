@@ -111,15 +111,15 @@ rule short_read_fastq_screen_r1:
         log = "01.qc/fastq_screen_config_check.log",
         conf = "01.qc/fastq_screen.conf"
     output:
-        fastq_screen_result = "01.qc/fastq_screen_r1/{sample}_R1_screen.txt",
+        fastq_screen_result = "01.qc/fastq_screen/{sample}_R1_screen.txt",
     resources:
         **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
     log:
-        "logs/01.qc/fastq_screen_r1_{sample}.log",
+        "logs/01.qc/fastq_screen_{sample}.log",
     conda:
         workflow.source_path('../envs/fastq_screen.yaml'),
     params:
-        out_dir = "01.qc/fastq_screen_r1/",
+        out_dir = "01.qc/fastq_screen/",
         link_r1_dir = os.path.join("00.raw_data",
                                       config['convert_md5'],
                                       "{sample}/{sample}_R1.fq.gz"),
@@ -176,7 +176,7 @@ rule short_read_fastq_screen_r2:
         log = "01.qc/fastq_screen_config_check.log",
         conf = "01.qc/fastq_screen.conf"
     output:
-        fastq_screen_result = "01.qc/fastq_screen_r2/{sample}_R2_screen.txt",
+        fastq_screen_result = "01.qc/fastq_screen/{sample}_R2_screen.txt",
     resources:
         **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
     log:
@@ -184,7 +184,7 @@ rule short_read_fastq_screen_r2:
     conda:
         workflow.source_path('../envs/fastq_screen.yaml'),
     params:
-        out_dir = "01.qc/fastq_screen_r2/",
+        out_dir = "01.qc/fastq_screen/",
         subset = config['parameter'][ 'fastq_screen']['subset'],
         aligner = config['parameter']['fastq_screen']['aligner'],
         link_r2_dir = os.path.join("00.raw_data",
@@ -207,7 +207,7 @@ rule short_read_fastq_screen_r2:
                      {params.link_r2_dir} &> {log}
         """
 
-rule fastq_screen_multiqc_r1:
+rule fastq_screen_multiqc:
     """
     Aggregate R1 FastQ Screen contamination reports into a unified summary using MultiQC.
 
@@ -235,10 +235,12 @@ rule fastq_screen_multiqc_r1:
     ATAC-seq analysis or require additional filtering.
     """
     input:
-        fastqc_files_r1 = expand("01.qc/fastq_screen_r1/{sample}_R1_screen.txt",\
+        fastqc_files_r1 = expand("01.qc/fastq_screen/{sample}_R1_screen.txt",\
+                                  sample=samples.keys()),
+        fastqc_files_r1 = expand("01.qc/fastq_screen/{sample}_R2_screen.txt",\
                                   sample=samples.keys()),
     output:
-        report = "01.qc/fastq_screen_multiqc_r1/multiqc_r1_fastq_screen_report.html",
+        report = "01.qc/fastq_screen_multiqc/multiqc_fastq_screen_report.html",
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     conda:
@@ -246,67 +248,14 @@ rule fastq_screen_multiqc_r1:
     message:
         "Running MultiQC to aggregate R1 fastq screen reports",
     params:
-        fastqc_reports = "01.qc/fastq_screen_r1",
-        report_dir = "01.qc/fastq_screen_multiqc_r1/",
-        report = "multiqc_r1_fastq_screen_report.html",
-        title = "r1-fastq-screen-multiqc-report",
+        fastqc_reports = "01.qc/fastq_screen",
+        report_dir = "01.qc/fastq_screen_multiqc/",
+        report = "multiqc_fastq_screen_report.html",
+        title = "fastq-screen-multiqc-report",
     log:
-        "logs/01.qc/fastq_screen_multiqc_r1.log",
+        "logs/01.qc/fastq_screen_multiqc.log",
     benchmark:
-        "benchmarks/01.qc/fastq_screen_multiqc_r1.txt",
-    threads:
-        config['parameter']['threads']['multiqc'],
-    shell:
-        """
-        multiqc {params.fastqc_reports} \
-                --force \
-                --outdir {params.report_dir} \
-                -i {params.title} \
-                -n {params.report} &> {log}
-        """
-
-rule fastq_screen_multiqc_r2:
-    """
-    Aggregate R2 FastQ Screen contamination reports into a unified summary using MultiQC.
-
-    This rule collects all individual R2 FastQ Screen reports and synthesizes them
-    into a single interactive HTML report, providing a comprehensive view of reverse
-    read contamination profiles across all samples. This report complements the R1
-    FastQ Screen MultiQC report and together they provide a complete assessment of
-    contamination in paired-end sequencing data.
-
-    Comparing R1 and R2 contamination MultiQC reports enables:
-    - Detection of read direction-specific contamination patterns
-    - Identification of asymmetric contamination affecting only one read direction
-    - More robust estimation of true contamination levels
-    - Comprehensive evaluation of library purity
-
-    The report includes all standard MultiQC visualizations for FastQ Screen,
-    including heatmaps, bar charts, and summary statistics. This aggregated view
-    simplifies contamination assessment across the entire experiment and facilitates
-    informed decision-making about sample quality and inclusion in downstream
-    ATAC-seq analyses.
-    """
-    input:
-        fastqc_files_r1 = expand("01.qc/fastq_screen_r2/{sample}_R2_screen.txt",
-                                sample=samples.keys()),
-    output:
-        report = "01.qc/fastq_screen_multiqc_r2/multiqc_r2_fastq_screen_report.html",
-    resources:
-        **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
-    conda:
-        workflow.source_path("../envs/multiqc.yaml"),
-    message:
-        "Running MultiQC to aggregate R2 fastq screen reports",
-    params:
-        fastqc_reports = "01.qc/fastq_screen_r2",
-        report_dir = "01.qc/fastq_screen_multiqc_r2/",
-        report = "multiqc_r2_fastq_screen_report.html",
-        title = "r2-fastq-screen-multiqc-report",
-    log:
-        "logs/01.qc/fastq_screen_multiqc_r2.log",
-    benchmark:
-        "benchmarks/01.qc/fastq_screen_multiqc_r2.txt",
+        "benchmarks/01.qc/fastq_screen_multiqc.txt",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:
