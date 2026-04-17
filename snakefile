@@ -49,7 +49,11 @@ merge_group,samples = load_samples(config["sample_csv"],required_cols=["sample",
                                    logger = logger)
 groups = parse_groups(samples)
 ALL_CONTRASTS, CONTRAST_MAP = load_contrasts(config["paired_csv"], samples)
-# --------- 4. Rules Import --------- #
+# --------- 4. Pooled Analysis Config --------- #
+run_pooled = config['peak_calling']['use_pooled_peaks'] and merge_group
+config['_merge_group'] = merge_group
+config['_run_pooled'] = run_pooled
+# --------- 5. Rules Import --------- #
 include: 'rules/01.common.smk'
 include: 'rules/02.file_convert_md5.smk'
 include: 'rules/03.short_read_qc.smk'
@@ -64,13 +68,10 @@ include: 'rules/11.DEG_MERGE.smk'
 include: 'rules/12.motifs.smk'
 include: 'rules/13.deliver.smk'
 include: 'rules/14.Report.smk'
-# --------- 5. Target Rule --------- #
-run_pooled = config['peak_calling']['use_pooled_peaks'] and merge_group
-
-config['_merge_group'] = merge_group
-config['_run_pooled'] = run_pooled
-
+# --------- 6. Target Rule --------- #
 rule all:
     input:
-        DataDeliver(config = config, samples = samples, merge_group = merge_group, groups = groups, run_pooled = run_pooled)
-
+        DataDeliver(config = config, samples = samples,
+                    merge_group = merge_group, groups = groups,
+                    run_pooled = run_pooled)
+# --------------- END -------------- #
