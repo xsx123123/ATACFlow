@@ -197,7 +197,6 @@ def consensus_peaks(samples: Dict = None, data_deliver: List = None) -> List:
 
     return data_deliver
 
-
 def diff_peaks(
     samples: Dict = None, data_deliver: List = None, run_pooled: bool = False
 ) -> List:
