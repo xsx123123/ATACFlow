@@ -256,7 +256,9 @@ rule generate_count_matrix_by_featureCounts:
     benchmark:
         "benchmarks/04.consensus/single/consensus_featureCounts.txt",
     threads: 
-        config['parameter']['threads'].get('featurecounts')
+        config['parameter']['threads'].get('featurecounts', 8)  # 添加默认值
+    params:
+        sample_count = len(samples),  # 新增：样本数
     shell:
         """
         echo "Step 1/4: Converting BED to SAF..." > {log}
@@ -279,13 +281,12 @@ rule generate_count_matrix_by_featureCounts:
              NR>1 {{print}}' {output.counts_matrix} > {output.counts_clean}
 
         echo "Step 4/4: Generating description..." >> {log}
-        cat > {output.description} << EOF
-        ATAC-seq Consensus Peak Count Matrix
-        Generated: $(date +'%Y-%m-%d %H:%M:%S')
-        Samples: $(echo {input.bams} | wc -w)
-        Peaks: $(wc -l < {input.consensus})
-        FeatureCounts Version: $(featureCounts -v 2>&1 | head -1)
-        EOF
+        # 使用printf避免heredoc问题
+        printf "ATAC-seq Consensus Peak Count Matrix\n" > {output.description}
+        printf "Generated: %s\n" "$(date +'%%Y-%%m-%%d %%H:%%M:%%S')" >> {output.description}
+        printf "Samples: %d\n" {params.sample_count} >> {output.description}
+        printf "Peaks: %d\n" $(wc -l < {input.consensus}) >> {output.description}
+        printf "FeatureCounts Version: %s\n" "$(featureCounts -v 2>&1 | head -1)" >> {output.description}
         """
 
 rule generate_count_matrix_ann:
