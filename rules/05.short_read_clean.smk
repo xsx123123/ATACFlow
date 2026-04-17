@@ -176,8 +176,8 @@ rule merge_qc_report:
     """
     input:
         md5_check = "01.qc/md5_check.tsv",
-        fastqc_files_r1 = expand("01.qc/short_read_qc_r1/{sample}_R1_fastqc.zip", sample=samples.keys()),
-        fastqc_files_r2 = expand("01.qc/short_read_qc_r2/{sample}_R2_fastqc.zip", sample=samples.keys()),
+        fastqc_files_r1 = expand("01.qc/short_read_qc/{sample}_R1_fastqc.zip", sample=samples.keys()),
+        fastqc_files_r2 = expand("01.qc/short_read_qc/{sample}_R2_fastqc.zip", sample=samples.keys()),
         fastq_screen_result_r1 = expand("01.qc/fastq_screen/{sample}_R1_screen.txt",sample=samples.keys()),
         fastq_screen_result_r2 = expand("01.qc/fastq_screen/{sample}_R2_screen.txt",sample=samples.keys()),
         r1_trimmed = expand("01.qc/short_read_trim/{sample}.R1.trimed.fq.gz", sample=samples.keys()),
