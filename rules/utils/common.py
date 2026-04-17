@@ -67,11 +67,11 @@ def DataDeliver(
             )
         )
         data_deliver.append(
-            "01.qc/fastq_screen_multiqc_r1/multiqc_r1_fastq_screen_report.html"
+            "01.qc/fastq_screen_multiqc/multiqc_fastq_screen_report.html"
         )
-        data_deliver.append(
-            "01.qc/fastq_screen_multiqc_r2/multiqc_r2_fastq_screen_report.html"
-        )
+        #data_deliver.append(
+        #    "01.qc/fastq_screen_multiqc_r2/multiqc_r2_fastq_screen_report.html"
+        #)
 
     basic_modules = [
         "qc_clean",
