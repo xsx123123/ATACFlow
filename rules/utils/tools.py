@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-def get_java_opts(wildcards, input, resources):
+def get_java_opts(config, input, resources):
     """
     Get the correct Java options for a given rule.
     """
@@ -10,7 +10,7 @@ def get_java_opts(wildcards, input, resources):
         mem_gb = 20
         return f"-Xmx{mem_gb}g -XX:+UseParallelGC -XX:ParallelGCThreads=4"
     
-def get_blacklist_path(wildcards):
+def get_blacklist_path(config):
     """
     Get the blacklist path based on genome build
     """
@@ -23,7 +23,7 @@ def get_blacklist_path(wildcards):
         blacklist_dir = os.path.join(config.get("reference_path"),blacklist_dict)
     return blacklist_dir
 
-def get_organelle_names(wildcards):
+def get_organelle_names(config):
     build = config.get("Genome_Version")
     genome_cfg = config.get("genome_info", {}).get(build, {})
 
