@@ -269,7 +269,6 @@ rule filter_blacklist_and_mito:
         bai = '02.mapping/filtered/{sample}.clean.bam.bai'
     log:
         "logs/02.mapping/filter_blacklist_mito_{sample}.log"
-    threads: 4
     conda:
         workflow.source_path("../envs/samtools.yaml")
     resources:
@@ -280,6 +279,8 @@ rule filter_blacklist_and_mito:
         flag_req = 2,
         blacklist = lambda wildcards: get_blacklist_path(config),
         organelle_filter = lambda wildcards: " && ".join([f'rname != \\"{n}\\"' for n in get_organelle_names(config).split()]) if get_organelle_names(config) else "1"
+    threads: 
+        4
     shell:
         """
         # 设置 blacklist 过滤命令
@@ -294,7 +295,7 @@ rule filter_blacklist_and_mito:
         # 直接在命令中使用 params.organelle_filter
         echo "Filter expression: {params.organelle_filter}" >> {log}
 
-        (samtools view -h -b -F {params.flag_filter} -f {params.flag_req} -q {params.mapq} -e "{params.organelle_filter}" {input.bam} | \
+        (samtools view -@ {threads} -h -b -F {params.flag_filter} -f {params.flag_req} -q {params.mapq} -e "{params.organelle_filter}" {input.bam} | \
          eval "$FILTER_CMD" > {output.bam}) 2>> {log}
 
         samtools index {output.bam} >> {log} 2>&1

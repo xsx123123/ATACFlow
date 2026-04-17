@@ -63,6 +63,7 @@ rule macs2_callpeak:
         macs2 callpeak \
             -t {input.bam} \
             -f BAMPE \
+            --nomodel \
             -g {params.gsize} \
             --name {wildcards.sample} \
             --outdir {params.outdir} \
