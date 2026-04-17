@@ -103,36 +103,102 @@ rule homer_annotate_peaks:
             -p {threads} > {output.annotation} 2> {log}
         """
 
-rule create_consensus_peakset:
+rule extend_summits:
     """
-    Merge peaks from ALL samples to create a single consensus BED file.
-    
-    This rule combines narrowPeak files from all individual samples, sorts them,
-    and merges overlapping regions to create a comprehensive consensus peakset
-    representing the union of all accessible chromatin regions across the dataset.
+    Extend MACS2 summits by ±250bp to create fixed 500bp regions per sample.
     """
     input:
-        peaks = expand("03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak", sample=samples.keys())
+        "03.peak_calling/single/{sample}/{sample}_summits.bed"
     output:
-        consensus = "04.consensus/single/all_samples_consensus_peaks.bed"
+        "04.consensus/single/{sample}_summits_extended.bed"
     resources:
-        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
-    conda:
-        workflow.source_path("../envs/bedtools.yaml"),
+        **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/04.consensus/single/merge_peaks.log",
-    message:
-        "Creating consensus peakset from all samples",
+        "logs/04.consensus/single/extend_summits_{sample}.log",
     benchmark:
-        "benchmarks/04.consensus/single/merge_peaks.txt",
-    threads: 
-        config['parameter']['threads']['bedtools']
+        "benchmarks/04.consensus/single/extend_summits_{sample}.txt",
+    threads: 1
     shell:
         """
-        cat {input.peaks} | \
-        sort -k1,1 -k2,2n | \
-        bedtools merge -i stdin > {output.consensus} 2> {log}
+        awk 'BEGIN{{OFS="\t"}} {{
+            mid=int(($2+$3)/2);
+            start=mid-250;
+            if(start<0) start=0;
+            end=mid+250;
+            print $1, start, end, $4, $5
+        }}' {input} > {output} 2> {log}
         """
+
+rule merge_peaks_by_group:
+    """
+    Merge extended peaks within each group using HOMER mergePeaks (-d 250).
+    """
+    input:
+        lambda wildcards: expand("04.consensus/single/{sample}_summits_extended.bed", sample=groups[wildcards.group])
+    output:
+        "04.consensus/single/{group}.mergePeaks.bed"
+    resources:
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
+    conda:
+        workflow.source_path("../envs/homer.yaml"),
+    log:
+        "logs/04.consensus/single/mergePeaks_{group}.log",
+    message:
+        "Merging peaks for group {wildcards.group}",
+    benchmark:
+        "benchmarks/04.consensus/single/mergePeaks_{group}.txt",
+    threads: 1
+    shell:
+        """
+        mergePeaks {input} -d 250 > {output} 2> {log}
+        """
+
+rule filter_group_consensus:
+    """
+    Filter group-level merged peaks to retain only peaks supported by ≥2 replicates.
+    """
+    input:
+        "04.consensus/single/{group}.mergePeaks.bed"
+    output:
+        "04.consensus/single/{group}.consensus.bed"
+    resources:
+        **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
+    log:
+        "logs/04.consensus/single/filter_consensus_{group}.log",
+    benchmark:
+        "benchmarks/04.consensus/single/filter_consensus_{group}.txt",
+    threads: 1
+    shell:
+        """
+        awk 'BEGIN{{OFS="\t"}} $6>=2 {{print $1, $2, $3, $4, $5, $6, $7, $8, $9}}' {input} > {output} 2> {log}
+        """
+
+rule create_all_consensus_peaks:
+    """
+    Create final consensus peakset by merging all group-level consensus peaks.
+    Converts HOMER mergePeaks output to standard BED4 for downstream compatibility.
+    """
+    input:
+        expand("04.consensus/single/{group}.consensus.bed", group=groups.keys())
+    output:
+        "04.consensus/single/all_samples_consensus_peaks.bed"
+    resources:
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
+    conda:
+        workflow.source_path("../envs/homer.yaml"),
+    log:
+        "logs/04.consensus/single/create_all_consensus_peaks.log",
+    benchmark:
+        "benchmarks/04.consensus/single/create_all_consensus_peaks.txt",
+    threads: 1
+    shell:
+        """
+        TMP_PEAKS=$(mktemp /tmp/all_peaks.XXXXXX.bed)
+        cat {input} | sort -k1,1 -k2,2n > "$TMP_PEAKS"
+        mergePeaks -d 250 "$TMP_PEAKS" | awk 'BEGIN{{OFS="\t"}} {{print $2, $3, $4, $1}}' > {output} 2> {log}
+        rm -f "$TMP_PEAKS"
+        """
+
 
 rule homer_annotate_consensus_peaks:
     """
@@ -141,8 +207,8 @@ rule homer_annotate_consensus_peaks:
     input:
         consensus = "04.consensus/single/all_samples_consensus_peaks.bed"
     output:
-        annotation = "04.consensus/single/consensus_peaks_annotation.txt",
-        stats = "04.consensus/single/consensus_peaks_stats.txt"
+        annotation = "04.consensus/single/all_samples_consensus_peaks_annotation.txt",
+        stats = "04.consensus/single/all_samples_consensus_peaks_stats.txt"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
@@ -153,7 +219,8 @@ rule homer_annotate_consensus_peaks:
         "Running HOMER annotation for consensus peaks",
     benchmark:
         "benchmarks/04.consensus/single/consensus_annotate.txt",
-    threads: config['parameter']['threads']['homer']
+    threads: 
+        config['parameter']['threads']['homer']
     params:
         gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
         genome_fasta = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
@@ -168,54 +235,57 @@ rule homer_annotate_consensus_peaks:
 rule generate_count_matrix_by_featureCounts:
     """
     Generate a read count matrix using featureCounts for the consensus peakset.
-
-    This rule counts ATAC-seq paired-end fragments overlapping each consensus peak
-    across all samples. The -p flag ensures proper fragment-level counting.
     """
     input:
         consensus = "04.consensus/single/all_samples_consensus_peaks.bed",
         bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
     output:
         counts_matrix = "04.consensus/single/consensus_counts_matrix.txt",
-        description = "04.consensus/single/matrix_description.txt",
+        counts_clean = "04.consensus/single/consensus_counts_matrix.clean.txt",
         summary = "04.consensus/single/consensus_counts_matrix.txt.summary",
-        saf = temp("04.consensus/single/consensus_peaks.saf") 
+        saf = temp("04.consensus/single/consensus_peaks.saf"),
+        description = "04.consensus/single/matrix_description.txt"
+    resources:
+        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/subread.yaml"),
     log:
-        "logs/04.consensus/single/featureCounts.log"
+        "logs/04.consensus/single/consensus_featureCounts.log",
+    message:
+        "Running featureCounts for consensus peaks",
     benchmark:
-        "benchmarks/04.consensus/single/featureCounts.txt"
-    resources:
-        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
+        "benchmarks/04.consensus/single/consensus_featureCounts.txt",
     threads: 
-        config['parameter']['threads'].get('featurecounts', 16)
+        config['parameter']['threads'].get('featurecounts')
     shell:
         """
-        echo "1. Converting consensus BED to SAF format..." > {log}
+        echo "Step 1/4: Converting BED to SAF..." > {log}
         awk 'BEGIN{{OFS="\\t"; print "GeneID\\tChr\\tStart\\tEnd\\tStrand"}} \
-            {{print $1":"$2"-"$3, $1, $2, $3, "+"}}' {input.consensus} > {output.saf}
+            {{print $1"_"$2"_"$3, $1, $2, $3, "+"}}' {input.consensus} > {output.saf}
 
-        echo "2. Running featureCounts for ATAC-seq PE fragments..." >> {log}
+        echo "Step 2/4: Running featureCounts..." >> {log}
         featureCounts \
-            -p \
-            -B \
-            -C \
+            -p -B -C \
+            --largestOverlap \
+            --primary \
             -T {threads} \
             -F SAF \
             -a {output.saf} \
             -o {output.counts_matrix} \
             {input.bams} >> {log} 2>&1
-            
-        echo "3. Cleaning up matrix header for downstream R compatibility..." >> {log}
-        sed -i 's|02.mapping/shifted/||g; s|.shifted.sorted.bam||g' {output.counts_matrix}
 
-        echo "4. Generating description file..." >> {log}
-        echo "File Name: $(basename {output.counts_matrix})" > {output.description}
-        echo "Generated Date: $(date +'%Y-%m-%d %H:%M:%S')" >> {output.description}
-        echo "--------------------------------------------------" >> {output.description}
-        echo "Total Samples: $(echo "{input.bams}" | wc -w)" >> {output.description}
-        echo "Total Consensus Peaks: $(wc -l < {input.consensus})" >> {output.description}
+        echo "Step 3/4: Cleaning header for R..." >> {log}
+        awk 'NR==1 {{gsub(/02.mapping\/shifted\//,""); gsub(/\.shifted\.sorted\.bam/,""); print}} \
+             NR>1 {{print}}' {output.counts_matrix} > {output.counts_clean}
+
+        echo "Step 4/4: Generating description..." >> {log}
+        cat > {output.description} << EOF
+        ATAC-seq Consensus Peak Count Matrix
+        Generated: $(date +'%Y-%m-%d %H:%M:%S')
+        Samples: $(echo {input.bams} | wc -w)
+        Peaks: $(wc -l < {input.consensus})
+        FeatureCounts Version: $(featureCounts -v 2>&1 | head -1)
+        EOF
         """
 
 rule generate_count_matrix_ann:
@@ -223,7 +293,7 @@ rule generate_count_matrix_ann:
     Add gene annotation to the count matrix.
     """
     input:
-        annotation = "04.consensus/single/consensus_peaks_annotation.txt",
+        annotation = "04.consensus/single/all_samples_consensus_peaks_annotation.txt",
         counts_matrix = "04.consensus/single/consensus_counts_matrix.txt",
     output:
         counts_matrix_ann = "04.consensus/single/consensus_counts_matrix_ann.txt",
