@@ -83,18 +83,7 @@ def mapping(
             "02.mapping/shifted/{sample}.shifted.sorted.bam.bai", sample=samples.keys()
         )
     )
-
-    if config.get("bamCoverage"):
-        normalize_method = (
-            config.get("parameter", {})
-            .get("bamCoverage", {})
-            .get("normalizeUsing", "RPKM")
-        )
-        for sample in samples.keys():
-            data_deliver.append(
-                f"02.mapping/bamCoverage/{sample}_{normalize_method}.bw"
-            )
-
+    # bamCoverage & tss enrichment plot
     data_deliver.extend(
         expand("02.mapping/computeMatrix/{sample}_TSS_matrix.gz", sample=samples.keys())
     )

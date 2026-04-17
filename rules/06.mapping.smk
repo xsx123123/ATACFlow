@@ -371,7 +371,7 @@ rule generate_bigwig_coverage:
         shifted_sort_bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',
         shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai'
     output:
-        bw = f"02.mapping/bamCoverage/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw"
+        bw = "02.mapping/bamCoverage/{sample}_RPKM.bw",
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
@@ -387,7 +387,7 @@ rule generate_bigwig_coverage:
     params:
         binSize = config['parameter']['bamCoverage']['binSize'],
         smoothLength = config['parameter']['bamCoverage']['smoothLength'],
-        normalizeUsing = config['parameter']['bamCoverage']['normalizeUsing'],
+        normalizeUsing = "RPKM",
         effectiveGenomeSize = config['genome_info'][config['Genome_Version']]['effectiveGenomeSize'],
     shell:
         """
@@ -404,7 +404,7 @@ rule tss_enrichment_analysis:
     Compute TSS enrichment profile and generate plot
     """
     input:
-        bw = f"02.mapping/bamCoverage/{{sample}}_{config['parameter']['bamCoverage']['normalizeUsing']}.bw"
+        bw = "02.mapping/bamCoverage/{sample}_RPKM.bw",
     output:
         matrix = "02.mapping/computeMatrix/{sample}_TSS_matrix.gz",
         plot = "02.mapping/plots/{sample}_TSS_enrichment.png"
