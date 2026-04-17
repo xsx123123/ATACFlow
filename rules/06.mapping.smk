@@ -278,8 +278,8 @@ rule filter_blacklist_and_mito:
         mapq = 30,
         flag_filter = 1548,
         flag_req = 2,
-        blacklist = lambda config: get_blacklist_path(config),
-        organelle_filter = lambda config: " && ".join([f'rname != \\"{n}\\"' for n in get_organelle_names(config).split()]) if get_organelle_names(config) else "1"
+        blacklist = lambda wildcards: get_blacklist_path(config),
+        organelle_filter = lambda wildcards: " && ".join([f'rname != \\"{n}\\"' for n in get_organelle_names(config).split()]) if get_organelle_names(config) else "1"
     shell:
         """
         # 设置 blacklist 过滤命令
