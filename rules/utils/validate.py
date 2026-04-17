@@ -13,6 +13,12 @@ from rich import box
 from rich.align import Align
 from rich.padding import Padding
 
+def _check_bowtie2_index_exists(index_prefix: str) -> bool:
+    """Check if Bowtie2 index files exist for the given prefix."""
+    suffixes = [".1.bt2", ".1.bt2l"]
+    return any(os.path.exists(index_prefix + suffix) for suffix in suffixes)
+
+
 def check_reference_paths(ref_dict):
     """
     Rich-styled (modern minimalist): Check reference genome file paths.
@@ -34,7 +40,12 @@ def check_reference_paths(ref_dict):
             if not isinstance(params, dict):
                 continue
             for key, path in params.items():
-                if key in keys_to_check and path and not os.path.exists(path):
+                if key not in keys_to_check or not path:
+                    continue
+                if key == "index":
+                    if not _check_bowtie2_index_exists(path):
+                        missing_entries.append((genome_name, key, path))
+                elif not os.path.exists(path):
                     missing_entries.append((genome_name, key, path))
 
     if missing_entries:
