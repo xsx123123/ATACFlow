@@ -237,7 +237,7 @@ rule fastq_screen_multiqc:
     input:
         fastqc_files_r1 = expand("01.qc/fastq_screen/{sample}_R1_screen.txt",\
                                   sample=samples.keys()),
-        fastqc_files_r1 = expand("01.qc/fastq_screen/{sample}_R2_screen.txt",\
+        fastqc_files_r2 = expand("01.qc/fastq_screen/{sample}_R2_screen.txt",\
                                   sample=samples.keys()),
     output:
         report = "01.qc/fastq_screen_multiqc/multiqc_fastq_screen_report.html",
