@@ -260,9 +260,9 @@ rule generate_count_matrix_by_featureCounts:
     params:
         sample_count = len(samples),  # 新增：样本数
     shell:
-        """
+        r"""
         echo "Step 1/4: Converting BED to SAF..." > {log}
-        awk 'BEGIN{{OFS="\\t"; print "GeneID\\tChr\\tStart\\tEnd\\tStrand"}} \
+        awk 'BEGIN{{OFS="\t"; print "GeneID\tChr\tStart\tEnd\tStrand"}} \
             {{print $1"_"$2"_"$3, $1, $2, $3, "+"}}' {input.consensus} > {output.saf}
 
         echo "Step 2/4: Running featureCounts..." >> {log}
