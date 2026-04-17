@@ -51,7 +51,7 @@ Bowtie2_index:
       autosomes: Lactuca_sativa_V8_wx/Lactuca_sativa_V8_autosomes.txt
       ploidy: 2
     Lsat_Salinas_v11_wx:
-      index: Lactuca_sativa_V11_xw/Lsat_Salinas_v11_index_xw/Lsat_Salinas_v11_xw
+      index: Lactuca_sativa_V11_xw/Lsat_Salinas_v11_index_xw/Lsat_Salinas_v11_index_xw
       chromap_index: Lactuca_sativa_V11_xw/Lsat_Salinas_v11.xw
       gene_gtf: Lactuca_sativa_V11_xw/Lsat_Salinas_v11.genome.gtf
       genome_fa: Lactuca_sativa_V11_xw/Lsat_Salinas_v11.genome.fasta
