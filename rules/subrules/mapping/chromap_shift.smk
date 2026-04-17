@@ -40,7 +40,7 @@ rule atac_seq_shift:
     resources:
         **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
     conda:
-        workflow.source_path("../envs/deeptools.yaml")
+        workflow.source_path("../../../envs/deeptools.yaml")
     threads:
         20
     shell:

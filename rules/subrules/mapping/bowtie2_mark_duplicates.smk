@@ -42,7 +42,7 @@ rule mark_duplicates:
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
-        workflow.source_path("../envs/gatk.yaml")
+        workflow.source_path("../../../envs/gatk.yaml")
     log:
         "logs/02.mapping/gatk/mark_dup_{sample}.log"
     benchmark:
