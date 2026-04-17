@@ -190,7 +190,7 @@ def consensus_peaks(samples: Dict = None, data_deliver: List = None) -> List:
         data_deliver = []
 
     data_deliver.append("04.consensus/single/all_samples_consensus_peaks.bed")
-    data_deliver.append("04.consensus/single/consensus_peaks_annotation.txt")
+    data_deliver.append("04.consensus/single/all_samples_consensus_peaks_annotation.txt")
     data_deliver.append("04.consensus/single/consensus_counts_matrix.txt")
     data_deliver.append("04.consensus/single/matrix_description.txt")
     data_deliver.append("04.consensus/single/consensus_counts_matrix_ann.txt")
