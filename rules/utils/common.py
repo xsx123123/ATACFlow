@@ -58,12 +58,12 @@ def DataDeliver(
     if config.get("parameter", {}).get("fastq_screen", {}).get("run"):
         data_deliver.extend(
             expand(
-                "01.qc/fastq_screen_r1/{sample}_R1_screen.txt", sample=samples.keys()
+                "01.qc/fastq_screen/{sample}_R1_screen.txt", sample=samples.keys()
             )
         )
         data_deliver.extend(
             expand(
-                "01.qc/fastq_screen_r2/{sample}_R2_screen.txt", sample=samples.keys()
+                "01.qc/fastq_screen/{sample}_R2_screen.txt", sample=samples.keys()
             )
         )
         data_deliver.append(
