@@ -5,7 +5,6 @@ import os
 import sys
 import pandas as pd
 from pathlib import Path
-from rich import print as rprint
 from typing import List, Dict, Tuple
 from collections import defaultdict
 
@@ -21,19 +20,19 @@ def _validate_df(df: pd.DataFrame, required_cols: List[str], index_col: str) -> 
     # 1. Validate required columns
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
-        rprint(f"[bold red]❌ Sample table format error! Missing columns: {missing_cols}[/bold red]")
+        logger.error(f"❌ Sample table format error! Missing columns: {missing_cols}")
         sys.exit(1)
 
     # 2. Validate ID uniqueness
     if df[index_col].duplicated().any():
         duplicated_ids = df[df[index_col].duplicated()][index_col].unique().tolist()
-        rprint(f"[bold red]❌ Sample IDs are not unique! Duplicate IDs: {duplicated_ids}[/bold red]")
+        logger.error(f"❌ Sample IDs are not unique! Duplicate IDs: {duplicated_ids}")
         sys.exit(1)
 
     # 3. Validate null values
     if df[required_cols].isnull().any().any():
         nan_rows = df[df[required_cols].isnull().any(axis=1)][index_col].tolist()
-        rprint(f"[yellow]⚠️ Warning: Samples contain null values: {nan_rows}[/yellow]")
+        logger.warning(f"⚠️ Warning: Samples contain null values: {nan_rows}")
 
 def load_samples(csv_path, required_cols=None, index_col="sample",logger = None) -> Tuple[bool, Dict]:
     """
@@ -48,7 +47,7 @@ def load_samples(csv_path, required_cols=None, index_col="sample",logger = None)
 
     file_path = Path(csv_path)
     if not file_path.exists():
-        rprint(f"[bold red]❌ Error: Sample table file not found: {file_path}[/bold red]")
+        logger.error(f"❌ Error: Sample table file not found: {file_path}")
         sys.exit(1)
 
     try:
@@ -90,13 +89,20 @@ def load_samples(csv_path, required_cols=None, index_col="sample",logger = None)
         logger.warning(f"[bold red]❌ Error: load_samples parsing failed: {e}[/bold red]")
         sys.exit(1)
 
-def load_contrasts(csv_path, samples_dict):
+def load_contrasts(csv_path, samples_dict, logger=None):
     """
     Parse contrast table and match corresponding BAM file paths based on samples_dict.
     """
+    try:
+        from snakemake_logger_plugin_rich_loguru import get_analysis_logger
+        logger = get_analysis_logger() if logger is None else logger
+    except ImportError:
+        import logging
+        logger = logging.getLogger("Analysis") if logger is None else logger
+
     file_path = Path(csv_path)
     if not file_path.exists():
-        print(f"❌ Error: Contrast table file not found: {file_path}", file=sys.stderr)
+        logger.error(f"❌ Error: Contrast table file not found: {file_path}")
         sys.exit(1)
 
     try:
@@ -106,7 +112,7 @@ def load_contrasts(csv_path, samples_dict):
         df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
 
         if "Control" not in df.columns or "Treat" not in df.columns:
-            print(f"❌ Error: contrasts.csv must contain 'Control' and 'Treat' columns", file=sys.stderr)
+            logger.error(f"❌ Error: contrasts.csv must contain 'Control' and 'Treat' columns")
             sys.exit(1)
 
         all_contrasts = []
@@ -131,10 +137,10 @@ def load_contrasts(csv_path, samples_dict):
 
             # 4. Only check if samples were found (logical check), not physical file existence
             if not bams_ctrl:
-                print(f"⚠️ Warning: Group '{ctrl_grp}' has no samples, skipping {c_name}", file=sys.stderr)
+                logger.warning(f"⚠️ Warning: Group '{ctrl_grp}' has no samples, skipping {c_name}")
                 continue
             if not bams_treat:
-                print(f"⚠️ Warning: Group '{treat_grp}' has no samples, skipping {c_name}", file=sys.stderr)
+                logger.warning(f"⚠️ Warning: Group '{treat_grp}' has no samples, skipping {c_name}")
                 continue
 
             all_contrasts.append(c_name)
@@ -146,10 +152,10 @@ def load_contrasts(csv_path, samples_dict):
         return all_contrasts, contrast_map
 
     except Exception as e:
-        print(f"❌ Error: load_contrasts parsing failed: {e}", file=sys.stderr)
+        logger.error(f"❌ Error: load_contrasts parsing failed: {e}")
         sys.exit(1)
 
-def parse_groups(samples_dict: Dict) -> Dict[str, List[str]]:
+def parse_groups(samples_dict: Dict, logger=None) -> Dict[str, List[str]]:
     """
     Invert the SampleID -> Info dictionary to Group -> [SampleID_1, SampleID_2] dictionary.
 
@@ -159,6 +165,13 @@ def parse_groups(samples_dict: Dict) -> Dict[str, List[str]]:
     Returns:
         dict: {'Control': ['s1', 's2'], 'Treat': ['s3', 's4']}
     """
+    try:
+        from snakemake_logger_plugin_rich_loguru import get_analysis_logger
+        logger = get_analysis_logger() if logger is None else logger
+    except ImportError:
+        import logging
+        logger = logging.getLogger("Analysis") if logger is None else logger
+
     # Using defaultdict(list) eliminates the need for "if key not in dict" checks, making code more concise
     groups = defaultdict(list)
 
@@ -170,7 +183,7 @@ def parse_groups(samples_dict: Dict) -> Dict[str, List[str]]:
             groups[group_name].append(sample_id)
         else:
             # Defensive programming: in case there's no group field (though load_samples validates this)
-            rprint(f"[red]⚠️ Warning: Sample {sample_id} has no group info![/red]")
+            logger.warning(f"⚠️ Warning: Sample {sample_id} has no group info!")
 
     return dict(groups) # Convert back to regular dictionary before returning
 
