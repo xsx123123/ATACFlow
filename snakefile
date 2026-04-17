@@ -72,5 +72,5 @@ config['_run_pooled'] = run_pooled
 
 rule all:
     input:
-        DataDeliver(config = config,merge_group = merge_group,groups = groups,run_pooled = run_pooled)
+        DataDeliver(config = config, samples = samples, merge_group = merge_group, groups = groups, run_pooled = run_pooled)
 

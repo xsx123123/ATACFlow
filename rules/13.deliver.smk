@@ -22,7 +22,7 @@ import pandas as pd
 
 rule delivery:
     input:
-        DataDeliver(config)
+        DataDeliver(config = config, samples = samples, merge_group = merge_group, groups = groups, run_pooled = run_pooled)
     output:
         manifest_json = os.path.join(config['data_deliver'],'delivery_manifest.json'),
         manifest_md5 = os.path.join(config['data_deliver'],'delivery_manifest.md5'),
