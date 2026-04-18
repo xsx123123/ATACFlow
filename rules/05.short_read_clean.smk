@@ -188,7 +188,7 @@ rule merge_qc_report:
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     benchmark:
-        "benchmarks/05.short_read_clean/merge_qc_report_{sample}.txt",
+        "benchmarks/05.short_read_clean/merge_qc_report_benchmarks.txt",
     message:
         "Running merge_qc_report",
     conda:
