@@ -56,7 +56,7 @@ rule DEG:
     with the biological processes under investigation.
     """
     input:
-        counts = lambda wildcards: get_diff_analysis_input(config, config.get('_merge_group', False)),
+        counts = "04.consensus/single/consensus_counts_matrix_ann.txt"
     output:
         output = '06.deg_enrich/DEG/Global_PCA.pdf',
         summary = '06.deg_enrich/DEG/All_Contrast_Differential_Peaks_Statistics.csv',

@@ -64,10 +64,9 @@ include: 'rules/07.MACS2.smk'
 include: 'rules/08.MergeMACS2.smk'
 include: 'rules/09.ATAC_QC.smk'
 include: 'rules/10.DEG.smk'
-include: 'rules/11.DEG_MERGE.smk'
-include: 'rules/12.motifs.smk'
-include: 'rules/13.deliver.smk'
-include: 'rules/14.Report.smk'
+include: 'rules/11.motifs.smk'
+include: 'rules/12.deliver.smk'
+include: 'rules/13.Report.smk'
 # --------- 6. Target Rule --------- #
 rule all:
     input:

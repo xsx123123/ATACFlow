@@ -359,13 +359,15 @@ rule calculate_frip_score:
         
         awk 'BEGIN{{OFS="\\t"; print "GeneID\\tChr\\tStart\\tEnd\\tStrand"}} {{print "peak_"NR, $1, $2+1, $3, "."}}' {input.peaks} > {output.frip}.saf
         
-        peakReads=$(featureCounts -p -a {output.frip}.saf -F SAF -o {output.frip}.counts {input.bam} 2>> {log} | grep -A1 "TotalReads" | tail -n1 | awk '{{print $1}}')
+        featureCounts -p -T {threads} -a {output.frip}.saf -F SAF  -o {output.frip}.counts {input.bam} 2>> {log}
+            
+        peakReads=$(grep "Assigned" {output.frip}.counts.summary | cut -f2)
         
-        frip=$(echo "scale=4; $peakReads / $totalReads" | bc)
+        frip=$(awk "BEGIN {{printf \\"%.4f\\", $peakReads/$totalReads}}")
         
-        echo "TotalReads: $totalReads" > {output.frip}
-        echo "PeakReads: $peakReads" >> {output.frip}
-        echo "FRiP: $frip" >> {output.frip}
+        echo -e "TotalReads\\t$totalReads" > {output.frip}
+        echo -e "PeakReads\\t$peakReads" >> {output.frip}
+        echo -e "FRiP\\t$frip" >> {output.frip}
         
         rm -f {output.frip}.saf {output.frip}.counts {output.frip}.counts.summary
         """
