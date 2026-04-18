@@ -85,7 +85,7 @@ def mapping(
             sample=samples.keys()))
     
     data_deliver.extend(expand(
-            "02.mapping/samtools_flagstat/{sample}_dedup_bam_flagstat.tsv",
+            "02.mapping/samtools_flagstat/{sample}_bam_dedup_flagstat.tsv",
             sample=samples.keys()))
 
     data_deliver.extend(expand(

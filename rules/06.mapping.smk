@@ -285,7 +285,7 @@ rule samtools_flagst_dedup:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam',
         bai = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam.bai',
     output:
-        samtools_flagstat = '02.mapping/samtools_flagstat/{sample}_dedup_bam_flagstat.tsv',
+        samtools_flagstat = '02.mapping/samtools_flagstat/{sample}_bam_dedup_flagstat.tsv',
     resources:
         **rule_resource(config, 'medium_resource',  skip_queue_on_local=True,logger = logger),
     conda:
