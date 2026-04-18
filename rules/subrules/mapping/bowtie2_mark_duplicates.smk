@@ -38,6 +38,7 @@ rule mark_duplicates:
         bai = '02.mapping/gatk/{sample}/{sample}.rg.bam.bai',
     output:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam',
+        bai = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bai',
         metrics = '02.mapping/gatk/{sample}/{sample}.rg.dedup.metrics.txt',
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),

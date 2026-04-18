@@ -283,7 +283,7 @@ rule samtools_flagst_dedup:
     """
     input:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam',
-        bai = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam.bai',
+        bai = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bai',
     output:
         samtools_flagstat = '02.mapping/samtools_flagstat/{sample}_bam_dedup_flagstat.tsv',
     resources:
