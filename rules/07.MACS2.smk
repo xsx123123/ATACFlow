@@ -69,6 +69,7 @@ rule macs2_callpeak:
             --outdir {params.outdir} \
             -q {params.qvalue} \
             --keep-dup all \
+            --call-summits \
             -B --SPMR 2> {log}
         """
 

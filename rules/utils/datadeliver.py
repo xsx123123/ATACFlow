@@ -80,17 +80,16 @@ def mapping(
     data_deliver.extend(expand("02.mapping/plots/{sample}_TSS_enrichment.png", sample=samples.keys()))
 
     # samtools stats & flagstat
-    data_deliver.extend(
-        expand(
+    data_deliver.extend(expand(
             "02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv",
-            sample=samples.keys(),
-        )
-    )
-    data_deliver.extend(
-        expand(
-            "02.mapping/samtools_stats/{sample}_bam_stats.tsv", sample=samples.keys()
-        )
-    )
+            sample=samples.keys()))
+    
+    data_deliver.extend(expand(
+            "02.mapping/samtools_flagstat/{sample}_dedup_bam_flagstat.tsv",
+            sample=samples.keys()))
+
+    data_deliver.extend(expand(
+            "02.mapping/samtools_stats/{sample}_bam_stats.tsv", sample=samples.keys()))
 
     return data_deliver
 

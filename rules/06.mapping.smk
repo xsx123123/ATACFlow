@@ -257,6 +257,53 @@ rule add_read_groups:
 include: "./subrules/mapping/bowtie2_mark_duplicates.smk"
 # --------------- mark dup Rules --------------- #
 
+rule samtools_flagst_dedup:
+    """
+    Generate flag statistics for BAM files using samtools flagstat.
+
+    This rule produces comprehensive statistics about the alignment flags in the BAM file,
+    providing a breakdown of how reads are categorized based on their SAM flag values.
+    Flagstat reports essential quality metrics that help assess the success of the
+    alignment step and identify potential issues with the sequencing data.
+
+    Key statistics reported include:
+    - Total number of reads in the BAM file
+    - Number of reads mapped to the reference genome
+    - Properly paired reads (reads mapped in correct orientation and distance)
+    - Reads mapped as singletons (only one end of pair mapped)
+    - Reads mapped to different chromosomes or with unexpected orientations
+    - Duplicate reads and supplementary alignments
+
+    These metrics are crucial for quality control, enabling the identification of
+    alignment problems such as high unmapped rates, poor pairing efficiency, or
+    contamination with adapter dimers. The tab-separated format facilitates downstream
+    parsing and integration into quality control reports.
+    """
+    input:
+        bam = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam',
+        bai = '02.mapping/gatk/{sample}/{sample}.rg.dedup.bam.bai',
+    output:
+        samtools_flagstat = '02.mapping/samtools_flagstat/{sample}_dedup_bam_flagstat.tsv',
+    resources:
+        **rule_resource(config, 'medium_resource',  skip_queue_on_local=True,logger = logger),
+    conda:
+        workflow.source_path("../envs/samtools.yaml"),
+    message:
+        "Running samtools flagstat for BAM : {input.bam}",
+    log:
+        "logs/02.mapping/samtools_flagstat_dedup_{sample}.log",
+    benchmark:
+        "benchmarks/samtools_flagstat_dedup_{sample}_benchmark.txt",
+    threads:
+        config['parameter']["threads"]["samtools_flagstat"],
+    shell:
+        """
+        samtools flagstat \
+                 -@ {threads} \
+                 -O tsv \
+                 {input.bam} > {output.samtools_flagstat} 2>{log}
+        """
+
 rule filter_blacklist_and_mito:
     """
     Filter BAM files to remove blacklist regions, organellar reads,
