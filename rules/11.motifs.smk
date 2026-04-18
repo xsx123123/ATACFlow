@@ -180,7 +180,7 @@ rule tobias_bindetect:
                          --verbose &> {log}
         """
 
-# 创建一个收集所有组结果的规则
+
 rule tobias_complete_analysis:
     """
     Complete TOBIAS motif analysis for all groups
@@ -197,7 +197,7 @@ rule tobias_complete_analysis:
     message:
         "Completing TOBIAS motif analysis for all groups",
     benchmark:
-        "benchmarks/07.motifs/tobias_complete_analysis_{group}.txt",
+        "benchmarks/07.motifs/tobias_complete_analysis_benchmarks.txt",
     threads:
         1
     shell:
