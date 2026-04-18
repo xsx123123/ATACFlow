@@ -75,12 +75,14 @@ rule ataqv_qc:
     output:
         json = "02.mapping/ataqv/{sample}.ataqv.json",
         log_out = "02.mapping/ataqv/{sample}.ataqv.out"
+    benchmark:
+        "benchmarks/05.ATAC_QC/ataqv_qc_{sample}.txt",
     conda:
         workflow.source_path("../envs/ataqv.yaml"),
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/05.qc/ataqv/{sample}.ataqv.log",
+        "logs/05.ATAC_QC/ataqv_qc_{sample}.log",
     message:
         "Running ataqv QC on {wildcards.sample}",
     params:
@@ -144,14 +146,14 @@ rule multiqc_ATAC_QC:
     message:
         "Running MultiQC to aggregate fastp reports",
     benchmark:
-        "benchmarks/05.ATAC_QC/multiqc_ATAC_report.txt",
+        "benchmarks/05.ATAC_QC/multiqc_ATAC_QC.txt",
     params:
         origin_reports = "02.mapping/",
         report_dir = "05.ATAC_QC/",
         report = "multiqc_ATAC_report.html",
         title = "ATAC_report",
     log:
-        "logs/05.ATAC_QC/multiqc_ATAC_report.log",
+        "logs/05.ATAC_QC/multiqc_ATAC_QC.log",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:
@@ -256,14 +258,14 @@ rule multiqc_macs2_group:
     message:
         "Running MultiQC to aggregate MACS2",
     benchmark:
-        "benchmarks/05.ATAC_QC/multiqc_MACS2_Merge_report.txt",
+        "benchmarks/05.ATAC_QC/multiqc_macs2_group.txt",
     params:
         origin_reports = "03.peak_calling/",
         report_dir = "05.ATAC_QC/",
         report = "multiqc_MACS2_Merge_report.html",
         title = "MACS2_Merge_report",
     log:
-        "logs/05.ATAC_QC/multiqc_MACS2_Merge_report.log",
+        "logs/05.ATAC_QC/multiqc_macs2_group.log",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:

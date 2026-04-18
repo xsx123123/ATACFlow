@@ -54,11 +54,11 @@ rule short_read_fastp:
     conda:
         workflow.source_path("../envs/fastp.yaml"),
     log:
-        "logs/01.qc/fastp_{sample}.log",
+        "logs/05.short_read_clean/short_read_fastp_{sample}.log",
     message:
         "Running Fastp on {wildcards.sample} r1 and {wildcards.sample} r2",
     benchmark:
-        "benchmarks/01.qc/fastp_{sample}.txt",
+        "benchmarks/05.short_read_clean/short_read_fastp_{sample}.txt",
     params:
         length_required = config['parameter']["trim"]["length_required"],
         quality_threshold = config['parameter']["trim"]["quality_threshold"],
@@ -124,14 +124,14 @@ rule multiqc_trim:
     message:
         "Running MultiQC to aggregate fastp reports",
     benchmark:
-        "benchmarks/01.qc/multiqc_trim.txt",
+        "benchmarks/05.short_read_clean/multiqc_trim.txt",
     params:
         fastqc_reports = "01.qc/short_read_trim/",
         report_dir = "01.qc/multiqc_short_read_trim/",
         report = "multiqc_short_read_trim_report.html",
         title = "short_read_trim-multiqc-report",
     log:
-        "logs/01.qc/multiqc_trim.log",
+        "logs/05.short_read_clean/multiqc_trim.log",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:
@@ -187,6 +187,10 @@ rule merge_qc_report:
         report = '01.qc/multiqc_merge_qc/multiqc_merge_qc_report.html',
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
+    benchmark:
+        "benchmarks/05.short_read_clean/merge_qc_report_{sample}.txt",
+    message:
+        "Running merge_qc_report",
     conda:
         workflow.source_path("../envs/multiqc.yaml"),
     params:
@@ -195,7 +199,7 @@ rule merge_qc_report:
         report_name = "multiqc_merge_qc_report.html",
         title = "merge qc report",
     log:
-        "logs/01.qc/multiqc_merge_qc.log",
+        "logs/05.short_read_clean/merge_qc_report.log",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:

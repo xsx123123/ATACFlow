@@ -62,12 +62,14 @@ rule DEG:
         summary = '06.deg_enrich/DEG/All_Contrast_Differential_Peaks_Statistics.csv',
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
+    message:
+        "Running DEG",
     conda:
         workflow.source_path("../envs/deg_deseq2.yaml"),
     log:
-        "logs/06.DEG/deseq2_peak_benchmark.log",
+        "logs/06.DEG/DEG.log",
     benchmark:
-        "benchmarks/deseq2_peak_benchmark.txt",
+        "benchmarks/06.DEG/DEG.txt",
     params:
         deg_dir = '06.deg_enrich/DEG',
         samples = config['sample_csv'],
@@ -128,10 +130,14 @@ rule Enrichments:
         Enrichments_dir = directory("06.deg_enrichs/enrich/"),
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
+    benchmark:
+        "benchmarks/06.DEG/Enrichments.txt",
+    message:
+        "Running Enrichments",
     conda:
         workflow.source_path("../envs/go_enrich_r.yaml"),
     log:
-        "logs/06.deg_enrich/go_enrich.log",
+        "logs/06.DEG/Enrichments.log",
     params:
         obo = config['Bowtie2_index']['GO']['obo'],
         go_annotation = config['Bowtie2_index'][config['Genome_Version']]['go_annotation'],

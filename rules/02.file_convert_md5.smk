@@ -39,7 +39,7 @@ rule seq_preprocessor:
     message:
         "Running seq_preprocessor on raw data data",
     benchmark:
-        "benchmarks/01.qc/seq_preprocessor.txt",
+        "benchmarks/02.file_convert_md5/seq_preprocessor.txt",
     resources:
         **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
     params:
@@ -47,7 +47,7 @@ rule seq_preprocessor:
         md5 = config['raw_data']['md5'],
         seq_preprocessor =  workflow.source_path(config['software']['seq_preprocessor']),
     log:
-        "logs/01.qc/seq_preprocessor.log",
+        "logs/02.file_convert_md5/seq_preprocessor.log",
     threads: 1
     shell:
         """
@@ -79,9 +79,9 @@ rule check_md5:
     message:
         "Running md5 check on raw data files on {input.md5_check_json}",
     benchmark:
-        "benchmarks/01.qc/md5_check.txt",
+        "benchmarks/02.file_convert_md5/check_md5.txt",
     log:
-        "logs/01.qc/md5_check.log",
+        "logs/02.file_convert_md5/check_md5.log",
     params:
         md5_check = os.path.join('00.raw_data',config['convert_md5']),
         log_file = "logs/01.qc/md5_check.log",

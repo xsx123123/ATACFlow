@@ -22,14 +22,16 @@ rule generate_fastq_screen_conf:
         template = workflow.source_path(config['parameter']['validate_fastq_screen']['path_conf']),
     output:
         conf = "01.qc/fastq_screen.conf"
+    message:
+        "Running generate_fastq_screen_conf",
     params:
         db_path = config.get("fastq_screen_db_path", "/data/jzhang/reference/"),
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     log:
-        "logs/01.qc/generate_fastq_screen_conf.log",
+        "logs/04.Contamination_check/generate_fastq_screen_conf.log",
     benchmark:
-        "benchmarks/01.qc/generate_fastq_screen_conf.txt",
+        "benchmarks/04.Contamination_check/generate_fastq_screen_conf.txt",
     localrule: True
     shell:
         """
@@ -63,12 +65,14 @@ rule check_fastq_screen_conf:
         log = "01.qc/fastq_screen_config_check.log",
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
+    message:
+        "Running check_fastq_screen_conf",
     params:
         validate_fastq_screen = workflow.source_path(config['parameter']['validate_fastq_screen']['path']),
     log:
-        "logs/01.qc/check_fastq_screen_conf.log",
+        "logs/04.Contamination_check/check_fastq_screen_conf.log",
     benchmark:
-        "benchmarks/01.qc/check_fastq_screen_conf.txt",
+        "benchmarks/04.Contamination_check/check_fastq_screen_conf.txt",
     threads:
         1
     shell:
@@ -115,7 +119,7 @@ rule short_read_fastq_screen_r1:
     resources:
         **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
     log:
-        "logs/01.qc/fastq_screen_{sample}.log",
+        "logs/04.Contamination_check/short_read_fastq_screen_r1_{sample}.log",
     conda:
         workflow.source_path('../envs/fastq_screen.yaml'),
     params:
@@ -128,7 +132,7 @@ rule short_read_fastq_screen_r1:
     message:
         "Running fastq_screen on {wildcards.sample} r1",
     benchmark:
-        "benchmarks/01.qc/fastq_screen_r1_{sample}.txt",
+        "benchmarks/04.Contamination_check/short_read_fastq_screen_r1_{sample}.txt",
     threads:
         config['parameter']['threads']['fastq_screen'],
     shell:
@@ -180,7 +184,7 @@ rule short_read_fastq_screen_r2:
     resources:
         **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
     log:
-        "logs/01.qc/fastq_screen_r2_{sample}.log",
+        "logs/04.Contamination_check/short_read_fastq_screen_r2_{sample}.log",
     conda:
         workflow.source_path('../envs/fastq_screen.yaml'),
     params:
@@ -193,7 +197,7 @@ rule short_read_fastq_screen_r2:
     message:
         "Running fastq_screen on {wildcards.sample} r2",
     benchmark:
-        "benchmarks/01.qc/fastq_screen_r2_{sample}.txt",
+        "benchmarks/04.Contamination_check/short_read_fastq_screen_r2_{sample}.txt",
     threads:
         config['parameter']['threads']['fastq_screen'],
     shell:
@@ -253,9 +257,9 @@ rule fastq_screen_multiqc:
         report = "multiqc_fastq_screen_report.html",
         title = "fastq-screen-multiqc-report",
     log:
-        "logs/01.qc/fastq_screen_multiqc.log",
+        "logs/04.Contamination_check/fastq_screen_multiqc.log",
     benchmark:
-        "benchmarks/01.qc/fastq_screen_multiqc.txt",
+        "benchmarks/04.Contamination_check/fastq_screen_multiqc.txt",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:

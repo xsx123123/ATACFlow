@@ -34,7 +34,11 @@ rule merge_shifted_bams:
         bam = "02.mapping/merged/{group}.merged.bam",
         bai = "02.mapping/merged/{group}.merged.bam.bai"
     log:
-        "logs/02.mapping/merge_{group}.log"
+        "logs/02.mapping/merge_shifted_bams_{group}.log"
+    benchmark:
+        "benchmarks/02.mapping/merge_shifted_bams_{group}.txt",
+    message:
+        "Running merge_shifted_bams",
     threads:
         8
     conda:
@@ -67,11 +71,11 @@ rule macs2_pooled_callpeak:
     conda:
         workflow.source_path("../envs/macs2.yaml"),
     log:
-        "logs/03.peak_calling/pooled/macs2_{group}.log",
+        "logs/03.peak_calling/pooled/macs2_pooled_callpeak_{group}.log",
     message:
         "Running pooled MACS2 peak calling for {wildcards.group}",
     benchmark:
-        "benchmarks/03.peak_calling/pooled/macs2_{group}.txt",
+        "benchmarks/03.peak_calling/pooled/macs2_pooled_callpeak_{group}.txt",
     threads:
         config['parameter']['threads']['macs2'],
     params:
@@ -105,11 +109,11 @@ rule homer_annotate_pooled_peaks:
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/03.peak_calling/pooled/homer_{group}.log",
+        "logs/03.peak_calling/pooled/homer_annotate_pooled_peaks_{group}.log",
     message:
         "Running HOMER annotation for {wildcards.group} pooled peaks",
     benchmark:
-        "benchmarks/03.peak_calling/pooled/homer_{group}.txt",
+        "benchmarks/03.peak_calling/pooled/homer_annotate_pooled_peaks_{group}.txt",
     threads: config['parameter']['threads']['homer']
     params:
         gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
@@ -138,11 +142,11 @@ rule create_pooled_consensus_peakset:
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
     log:
-        "logs/04.consensus/pooled/merge_peaks.log",
+        "logs/04.consensus/pooled/create_pooled_consensus_peakset.log",
     message:
         "Creating consensus peakset from pooled group peaks",
     benchmark:
-        "benchmarks/04.consensus/pooled/merge_peaks.txt",
+        "benchmarks/04.consensus/pooled/create_pooled_consensus_peakset.txt",
     threads: config['parameter']['threads']['bedtools']
     shell:
         """
@@ -165,11 +169,11 @@ rule homer_annotate_pooled_consensus_peaks:
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/04.consensus/pooled/consensus_annotate.log",
+        "logs/04.consensus/pooled/homer_annotate_pooled_consensus_peaks.log",
     message:
         "Running HOMER annotation for pooled consensus peaks",
     benchmark:
-        "benchmarks/04.consensus/pooled/consensus_annotate.txt",
+        "benchmarks/04.consensus/pooled/homer_annotate_pooled_consensus_peaks.txt",
     threads: config['parameter']['threads']['homer']
     params:
         gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
@@ -202,12 +206,14 @@ rule idr_analysis:
         idr_log = "03.peak_calling/idr/{group}/idr_pipeline.log",
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
+    message:
+        "Running idr_analysis",
     conda:
         workflow.source_path("../envs/idr.yaml"),
     log:
-        "logs/03.peak_calling/idr/{group}.log"
+        "logs/03.peak_calling/idr/idr_analysis_{group}.log"
     benchmark:
-        "benchmarks/03.peak_calling/idr/{group}.txt"
+        "benchmarks/03.peak_calling/idr/idr_analysis_{group}.txt"
     threads:
         config['parameter']['threads'].get('idr', 4)
     params:
@@ -247,11 +253,11 @@ rule homer_annotate_idr_peaks:
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/03.peak_calling/idr/homer_{group}.log",
+        "logs/03.peak_calling/idr/homer_annotate_idr_peaks_{group}.log",
     message:
         "Running HOMER annotation for {wildcards.group} IDR peaks",
     benchmark:
-        "benchmarks/03.peak_calling/idr/homer_{group}.txt",
+        "benchmarks/03.peak_calling/idr/homer_annotate_idr_peaks_{group}.txt",
     params:
         gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
         genome_fasta = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
@@ -277,12 +283,16 @@ rule calculate_frip_score:
         peaks = "03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak"
     output:
         frip = "03.peak_calling/single/{sample}/{sample}_frip.txt"
+    benchmark:
+        "benchmarks/03.peak_calling/single/calculate_frip_score_{sample}.txt",
+    message:
+        "Running calculate_frip_score",
     conda:
         workflow.source_path("../envs/subread.yaml"),
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/03.peak_calling/single/frip_{sample}.log"
+        "logs/03.peak_calling/single/calculate_frip_score_{sample}.log"
     threads: 4
     shell:
         """
@@ -317,14 +327,16 @@ rule generate_pooled_count_matrix:
         description = "04.consensus/pooled/matrix_description.txt",
         summary = "04.consensus/pooled/consensus_counts_matrix.txt.summary",
         saf = temp("04.consensus/pooled/consensus_peaks.saf")
+    message:
+        "Running generate_pooled_count_matrix",
     conda:
         workflow.source_path("../envs/subread.yaml"),
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/04.consensus/pooled/featureCounts.log"
+        "logs/04.consensus/pooled/generate_pooled_count_matrix.log"
     benchmark:
-        "benchmarks/04.consensus/pooled/featureCounts.txt"
+        "benchmarks/04.consensus/pooled/generate_pooled_count_matrix.txt"
     threads: 
         config['parameter']['threads'].get('featurecounts', 16)
     shell:
@@ -364,14 +376,16 @@ rule generate_pooled_count_matrix_ann:
         counts_matrix = "04.consensus/pooled/consensus_counts_matrix.txt",
     output:
         counts_matrix_ann = "04.consensus/pooled/consensus_counts_matrix_ann.txt",
+    message:
+        "Running generate_pooled_count_matrix_ann",
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/04.consensus/pooled/consensus_counts_matrix_ann.log",
+        "logs/04.consensus/pooled/generate_pooled_count_matrix_ann.log",
     benchmark:
-        "benchmarks/04.consensus/pooled/consensus_counts_matrix_ann.txt",
+        "benchmarks/04.consensus/pooled/generate_pooled_count_matrix_ann.txt",
     params:
         path = workflow.source_path(config['parameter']['merge_peaks']['path'])
     threads: 

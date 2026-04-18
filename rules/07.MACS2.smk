@@ -47,11 +47,11 @@ rule macs2_callpeak:
     conda:
         workflow.source_path("../envs/macs2.yaml"),
     log:
-        "logs/03.peak_calling/single/macs2_{sample}.log",
+        "logs/03.peak_calling/single/macs2_callpeak_{sample}.log",
     message:
         "Running MACS2 peak calling for {wildcards.sample}",
     benchmark:
-        "benchmarks/03.peak_calling/single/macs2_{sample}.txt",
+        "benchmarks/03.peak_calling/single/macs2_callpeak_{sample}.txt",
     threads:
         config['parameter']['threads']['macs2'],
     params:
@@ -87,11 +87,11 @@ rule homer_annotate_peaks:
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/03.peak_calling/single/homer_{sample}.log",
+        "logs/03.peak_calling/single/homer_annotate_peaks_{sample}.log",
     message:
         "Running HOMER annotation for {wildcards.sample}",
     benchmark:
-        "benchmarks/03.peak_calling/single/homer_{sample}.txt",
+        "benchmarks/03.peak_calling/single/homer_annotate_peaks_{sample}.txt",
     threads: config['parameter']['threads']['homer']
     params:
         gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
@@ -118,6 +118,8 @@ rule extend_summits:
         "logs/04.consensus/single/extend_summits_{sample}.log",
     benchmark:
         "benchmarks/04.consensus/single/extend_summits_{sample}.txt",
+    message:
+        "Running extend_summits",
     threads: 1
     shell:
         """
@@ -143,11 +145,11 @@ rule merge_peaks_by_group:
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/04.consensus/single/mergePeaks_{group}.log",
+        "logs/04.consensus/single/merge_peaks_by_group_{group}.log",
     message:
         "Merging peaks for group {wildcards.group}",
     benchmark:
-        "benchmarks/04.consensus/single/mergePeaks_{group}.txt",
+        "benchmarks/04.consensus/single/merge_peaks_by_group_{group}.txt",
     threads: 1
     shell:
         """
@@ -165,9 +167,11 @@ rule filter_group_consensus:
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/04.consensus/single/filter_consensus_{group}.log",
+        "logs/04.consensus/single/filter_group_consensus_{group}.log",
     benchmark:
-        "benchmarks/04.consensus/single/filter_consensus_{group}.txt",
+        "benchmarks/04.consensus/single/filter_group_consensus_{group}.txt",
+    message:
+        "Running filter_group_consensus",
     threads: 1
     shell:
         """
@@ -185,6 +189,8 @@ rule create_all_consensus_peaks:
         "04.consensus/single/all_samples_consensus_peaks.bed"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
+    message:
+        "Running create_all_consensus_peaks",
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
@@ -215,11 +221,11 @@ rule homer_annotate_consensus_peaks:
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/04.consensus/single/consensus_annotate.log",
+        "logs/04.consensus/single/homer_annotate_consensus_peaks.log",
     message:
         "Running HOMER annotation for consensus peaks",
     benchmark:
-        "benchmarks/04.consensus/single/consensus_annotate.txt",
+        "benchmarks/04.consensus/single/homer_annotate_consensus_peaks.txt",
     threads: 
         config['parameter']['threads']['homer']
     params:
@@ -251,11 +257,11 @@ rule generate_count_matrix_by_featureCounts:
     conda:
         workflow.source_path("../envs/subread.yaml"),
     log:
-        "logs/04.consensus/single/consensus_featureCounts.log",
+        "logs/04.consensus/single/generate_count_matrix_by_featureCounts.log",
     message:
         "Running featureCounts for consensus peaks",
     benchmark:
-        "benchmarks/04.consensus/single/consensus_featureCounts.txt",
+        "benchmarks/04.consensus/single/generate_count_matrix_by_featureCounts.txt",
     threads: 
         config['parameter']['threads'].get('featurecounts', 8)  # 添加默认值
     params:
@@ -299,14 +305,16 @@ rule generate_count_matrix_ann:
         counts_matrix = "04.consensus/single/consensus_counts_matrix.txt",
     output:
         counts_matrix_ann = "04.consensus/single/consensus_counts_matrix_ann.txt",
+    message:
+        "Running generate_count_matrix_ann",
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/04.consensus/single/consensus_counts_matrix_ann.log",
+        "logs/04.consensus/single/generate_count_matrix_ann.log",
     benchmark:
-        "benchmarks/04.consensus/single/consensus_counts_matrix_ann.txt",
+        "benchmarks/04.consensus/single/generate_count_matrix_ann.txt",
     params:
         path = workflow.source_path(config['parameter']['merge_peaks']['path'])
     threads: 

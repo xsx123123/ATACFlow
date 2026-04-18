@@ -52,6 +52,12 @@ rule generate_docker_json:
         json_file = os.path.join(config['data_deliver'], "report_data/project_summary.json")
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
+    log:
+        "logs/08.Report/generate_docker_json.log",
+    benchmark:
+        "benchmarks/08.Report/generate_docker_json.txt",
+    message:
+        "Running generate_docker_json",
     conda:
         workflow.source_path("../envs/py3.12.yaml"),
     params:
@@ -150,6 +156,8 @@ rule Report:
         Report_html =  os.path.join(config['data_deliver'], "Analysis_Report/index.html")
     resources:
         **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
+    message:
+        "Running Report",
     conda:
         workflow.source_path("../envs/py3.12.yaml"),
     params:
@@ -157,9 +165,9 @@ rule Report:
         Report_dir = os.path.join(config['data_deliver'], "Analysis_Report"),
         docker_version = config['parameter']['Report']['docker_version'],
     log:
-        "logs/Report.log",
+        "logs/08.Report/Report.log",
     benchmark:
-        "benchmark/Report.txt",
+        "benchmarks/08.Report/Report.txt",
     threads:
         config['parameter']['threads']['Report'],
     shell:

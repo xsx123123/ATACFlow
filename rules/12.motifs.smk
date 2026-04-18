@@ -17,11 +17,11 @@ rule tobias_format_bed:
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
-        "logs/06.motif_analysis/tobias_format_bed_{group}.log",
+        "logs/07.motifs/tobias_format_bed_{group}.log",
     message:
         "Formatting peak BED file for {wildcards.group} TOBIAS analysis",
     benchmark:
-        "benchmarks/06.motif_analysis/tobias_format_bed_{group}.txt",
+        "benchmarks/07.motifs/tobias_format_bed_{group}.txt",
     threads:
         1
     shell:
@@ -55,11 +55,11 @@ rule tobias_ata_correct:
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
-        "logs/06.motif_analysis/tobias_ata_correct_{group}.log",
+        "logs/07.motifs/tobias_ata_correct_{group}.log",
     message:
         "Correcting ATAC-seq signal for {wildcards.group}",
     benchmark:
-        "benchmarks/06.motif_analysis/tobias_ata_correct_{group}.txt",
+        "benchmarks/07.motifs/tobias_ata_correct_{group}.txt",
     params:
         outdir = "06.motif_analysis/02.signal_corrected"
     threads:
@@ -92,11 +92,11 @@ rule tobias_estimate_footprints:
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
-        "logs/06.motif_analysis/tobias_estimate_footprints_{group}.log",
+        "logs/07.motifs/tobias_estimate_footprints_{group}.log",
     message:
         "Estimating footprints for {wildcards.group}",
     benchmark:
-        "benchmarks/06.motif_analysis/tobias_estimate_footprints_{group}.txt",
+        "benchmarks/07.motifs/tobias_estimate_footprints_{group}.txt",
     params:
         outdir = "06.motif_analysis/03.footprints"
     threads:
@@ -125,11 +125,11 @@ rule download_jaspar_motifs:
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
-        "logs/06.motif_analysis/download_jaspar_motifs.log",
+        "logs/07.motifs/download_jaspar_motifs.log",
     message:
         "Downloading JASPAR motif database",
     benchmark:
-        "benchmarks/06.motif_analysis/download_jaspar_motifs.txt",
+        "benchmarks/07.motifs/download_jaspar_motifs.txt",
     params:
         url = "https://jaspar.genereg.net/download/data/2024/CORE/JASPAR2024_CORE_vertebrates_non-redundant_pfms_jaspar.txt"
     threads:
@@ -157,11 +157,11 @@ rule tobias_bindetect:
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
-        "logs/06.motif_analysis/tobias_bindetect_{group}.log",
+        "logs/07.motifs/tobias_bindetect_{group}.log",
     message:
-        "Detecting TF binding for {wildcards.group}",
+        "Running tobias_bindetect",
     benchmark:
-        "benchmarks/06.motif_analysis/tobias_bindetect_{group}.txt",
+        "benchmarks/07.motifs/tobias_bindetect_{group}.txt",
     params:
         outdir = "06.motif_analysis/04.bindetect/{group}"
     threads:
@@ -193,9 +193,11 @@ rule tobias_complete_analysis:
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/06.motif_analysis/tobias_complete_analysis.log",
+        "logs/07.motifs/tobias_complete_analysis.log",
     message:
         "Completing TOBIAS motif analysis for all groups",
+    benchmark:
+        "benchmarks/07.motifs/tobias_complete_analysis_{group}.txt",
     threads:
         1
     shell:
@@ -223,11 +225,11 @@ rule tobias_create_network:
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
-        "logs/06.motif_analysis/tobias_create_network_{comparison}.log",
+        "logs/07.motifs/tobias_create_network_{comparison}.log",
     message:
         "Creating motif comparison network for {wildcards.comparison}",
     benchmark:
-        "benchmarks/06.motif_analysis/tobias_create_network_{comparison}.txt",
+        "benchmarks/07.motifs/tobias_create_network_{comparison}.txt",
     params:
         outdir = "06.motif_analysis/05.differential_motifs/{comparison}_network",
         prefix = "{comparison}"
@@ -274,11 +276,11 @@ rule tobias_pairwise_comparison:
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
-        "logs/06.motif_analysis/tobias_pairwise_comparison_{contrast}_vs_{treatment}.log",
+        "logs/07.motifs/tobias_pairwise_comparison_{contrast}_vs_{treatment}.log",
     message:
-        "Comparing TF binding between {wildcards.contrast} and {wildcards.treatment}",
+        "Running tobias_pairwise_comparison",
     benchmark:
-        "benchmarks/06.motif_analysis/tobias_pairwise_comparison_{contrast}_vs_{treatment}.txt",
+        "benchmarks/07.motifs/tobias_pairwise_comparison_{contrast}_vs_{treatment}.txt",
     params:
         outdir = "06.motif_analysis/05.differential_motifs/{contrast}_vs_{treatment}",
         prefix = "{contrast}_vs_{treatment}"
@@ -323,11 +325,11 @@ rule tobias_contrast_comparison:
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
-        "logs/06.motif_analysis/tobias_contrast_comparison_{contrast}_vs_{treatment}.log",
+        "logs/07.motifs/tobias_contrast_comparison_{contrast}_vs_{treatment}.log",
     message:
         "Comparing TF binding between {wildcards.contrast} and {wildcards.treatment} (predefined contrast)",
     benchmark:
-        "benchmarks/06.motif_analysis/tobias_contrast_comparison_{contrast}_vs_{treatment}.txt",
+        "benchmarks/07.motifs/tobias_contrast_comparison_{contrast}_vs_{treatment}.txt",
     params:
         outdir = "06.motif_analysis/05.differential_motifs/{contrast}_vs_{treatment}",
         prefix = "{contrast}_vs_{treatment}"
@@ -372,11 +374,11 @@ rule tobias_differential_analysis_report:
     conda:
         workflow.source_path("../envs/tobias.yaml"),
     log:
-        "logs/06.motif_analysis/tobias_differential_analysis_report.log",
+        "logs/07.motifs/tobias_differential_analysis_report.log",
     message:
         "Generating differential motif analysis report",
     benchmark:
-        "benchmarks/06.motif_analysis/tobias_differential_analysis_report.txt",
+        "benchmarks/07.motifs/tobias_differential_analysis_report.txt",
     params:
         outdir = "06.motif_analysis/06.final_report"
     threads:

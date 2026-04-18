@@ -29,6 +29,8 @@ rule delivery:
         manifest_log = os.path.join(config['data_deliver'],'delivery_details.log'),
     resources:
         **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
+    message:
+        "Running delivery",
     conda:
         workflow.source_path("../envs/py3.12.yaml"),
     params:
@@ -36,9 +38,9 @@ rule delivery:
         config_path = workflow.source_path(config['parameter']['ATACFlow_Deliver_Tool']['config_path']),
         source_dir = config['workflow'],
     log:
-        "logs/delivery.log",
+        "logs/07.deliver/delivery.log",
     benchmark:
-        "benchmark/delivery.txt",
+        "benchmarks/07.deliver/delivery.txt",
     threads:
         config['parameter']['threads']['rnaflow-cli'],
     shell:
@@ -58,6 +60,8 @@ rule delivery_report:
         manifest_log = os.path.join(config['data_deliver'],'report_data','delivery_details.log'),
     resources:
         **rule_resource(config, 'high_resource',  skip_queue_on_local=True,logger = logger),
+    message:
+        "Running delivery_report",
     conda:
         workflow.source_path("../envs/py3.12.yaml"),
     params:
@@ -65,9 +69,9 @@ rule delivery_report:
         config_path = workflow.source_path(config['parameter']['ATACFlow_Deliver_Tool']['config_path_report']),
         source_dir = config['workflow'],
     log:
-        "logs/delivery_report.log",
+        "logs/07.deliver/delivery_report.log",
     benchmark:
-        "benchmark/delivery_report.txt",
+        "benchmarks/07.deliver/delivery_report.txt",
     threads:
         config['parameter']['threads']['rnaflow-cli'],
     shell:

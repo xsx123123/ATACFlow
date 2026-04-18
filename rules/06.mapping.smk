@@ -42,7 +42,7 @@ rule sorted_bam:
     log:
         "logs/02.mapping/sam_to_sorted_bam_{sample}.log",
     benchmark:
-        "benchmarks/{sample}_sam_to_sorted_bam_benchmark.txt",
+        "benchmarks/02.mapping/{sample}_sam_to_sorted_bam_benchmark.txt",
     threads:
         config['parameter']['threads']['samtools'],
     shell:
@@ -72,11 +72,11 @@ rule bam2cram:
     conda:
         workflow.source_path("../envs/bwa2.yaml"),
     message:
-        "Converting BAM to CRAM format : {input.sort_bam}",
+        "Running bam2cram",
     log:
-        "logs/02.mapping/bam_dup_stats_{sample}.log",
+        "logs/02.mapping/bam2cram_{sample}.log",
     benchmark:
-        "benchmarks/{sample}_Dup_bam_stats_benchmark.txt",
+        "benchmarks/02.mapping/bam2cram_{sample}.txt",
     threads:
         config['parameter']['threads']['bam2cram'],
     params:
@@ -121,9 +121,9 @@ rule samtools_flagst:
     message:
         "Running samtools flagstat for BAM : {input.bam}",
     log:
-        "logs/02.mapping/bam_dup_lagstat_{sample}.log",
+        "logs/02.mapping/samtools_flagst_{sample}.log",
     benchmark:
-        "benchmarks/{sample}_Dup_bam_lagstat_benchmark.txt",
+        "benchmarks/02.mapping/samtools_flagst_{sample}.txt",
     threads:
         config['parameter']["threads"]["samtools_flagstat"],
     shell:
@@ -174,9 +174,9 @@ rule samtools_stats:
     message:
         "Running samtools stats for BAM : {input.bam}",
     log:
-        "logs/02.mapping/bam_dup_stats_{sample}.log",
+        "logs/02.mapping/samtools_stats_{sample}.log",
     benchmark:
-        "benchmarks/{sample}_Dup_bam_stats_benchmark.txt",
+        "benchmarks/02.mapping/samtools_stats_{sample}.txt",
     threads:
         config['parameter']['threads']['samtools_stats'],
     params:
@@ -224,12 +224,14 @@ rule add_read_groups:
     output:
         bam = '02.mapping/gatk/{sample}/{sample}.rg.bam',
         bai = '02.mapping/gatk/{sample}/{sample}.rg.bam.bai',
+    message:
+        "Running add_read_groups",
     conda:
         workflow.source_path("../envs/samtools.yaml")
     log:
-        "logs/02.mapping/gatk/AddRG/{sample}.log"
+        "logs/02.mapping/add_read_groups_{sample}.log"
     benchmark:
-        "benchmarks/02.mapping/gatk/AddRG/{sample}.txt"
+        "benchmarks/02.mapping/add_read_groups_{sample}.txt"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     threads: 
@@ -291,9 +293,9 @@ rule samtools_flagst_dedup:
     message:
         "Running samtools flagstat for BAM : {input.bam}",
     log:
-        "logs/02.mapping/samtools_flagstat_dedup_{sample}.log",
+        "logs/02.mapping/samtools_flagst_dedup_{sample}.log",
     benchmark:
-        "benchmarks/samtools_flagstat_dedup_{sample}_benchmark.txt",
+        "benchmarks/02.mapping/samtools_flagst_dedup_{sample}.txt",
     threads:
         config['parameter']["threads"]["samtools_flagstat"],
     shell:
@@ -315,7 +317,11 @@ rule filter_blacklist_and_mito:
         bam = '02.mapping/filtered/{sample}.clean.bam',
         bai = '02.mapping/filtered/{sample}.clean.bam.bai'
     log:
-        "logs/02.mapping/filter_blacklist_mito_{sample}.log"
+        "logs/02.mapping/filter_blacklist_and_mito_{sample}.log"
+    benchmark:
+        "benchmarks/02.mapping/filter_blacklist_and_mito_{sample}.txt",
+    message:
+        "Running filter_blacklist_and_mito",
     conda:
         workflow.source_path("../envs/samtools.yaml")
     resources:
@@ -427,9 +433,9 @@ rule generate_bigwig_coverage:
     message:
         "Running bamCoverage (bigwig generation) for {input.shifted_sort_bam}"
     log:
-        "logs/02.mapping/bamCoverage_{sample}.log",
+        "logs/02.mapping/generate_bigwig_coverage_{sample}.log",
     benchmark:
-        "benchmarks/{sample}_bamCoverage_benchmark.txt",
+        "benchmarks/02.mapping/generate_bigwig_coverage_{sample}.txt",
     threads:
         config['parameter']['threads']['bamCoverage'],
     params:
@@ -456,12 +462,16 @@ rule tss_enrichment_analysis:
     output:
         matrix = "02.mapping/computeMatrix/{sample}_TSS_matrix.gz",
         plot = "02.mapping/plots/{sample}_TSS_enrichment.png"
+    benchmark:
+        "benchmarks/02.mapping/tss_enrichment_analysis_{sample}.txt",
+    message:
+        "Running tss_enrichment_analysis",
     params:
         gene_bed = config['Bowtie2_index'][config['Genome_Version']]['bed'],
         referencePoint = config['parameter']['draw_tss_plot']['referencePoint'],
         range_up_down = config['parameter']['draw_tss_plot']['range'],
     log:
-        "logs/02.mapping/tss_enrichment_{sample}.log"
+        "logs/02.mapping/tss_enrichment_analysis_{sample}.log"
     conda:
         workflow.source_path("../envs/deeptools.yaml"),
     resources:

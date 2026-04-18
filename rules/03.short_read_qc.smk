@@ -38,14 +38,14 @@ rule short_read_qc_r1:
     conda:
         workflow.source_path("../envs/fastqc.yaml"),
     log:
-        "logs/01.qc/r1_fastqc_{sample}.log",
+        "logs/03.short_read_qc/short_read_qc_r1_{sample}.log",
     params:
         out_dir = "01.qc/short_read_qc/",
         r1 = "00.link_dir/{sample}/{sample}_R1.fq.gz",
     message:
-        "Running FastQC on {wildcards.sample} r1",
+        "Running short_read_qc_r1",
     benchmark:
-        "benchmarks/01.qc/r1_fastqc_{sample}.txt",
+        "benchmarks/03.short_read_qc/short_read_qc_r1_{sample}.txt",
     threads:
         config['parameter']['threads']['fastqc'],
     shell:
@@ -88,14 +88,14 @@ rule short_read_qc_r2:
     conda:
         workflow.source_path("../envs/fastqc.yaml"),
     log:
-        "logs/01.qc/r2_fastqc_{sample}.log",
+        "logs/03.short_read_qc/short_read_qc_r2_{sample}.log",
     params:
         out_dir = "01.qc/short_read_qc",
         r2 = "00.link_dir/{sample}/{sample}_R2.fq.gz",
     message:
-        "Running FastQC on {wildcards.sample} r2",
+        "Running short_read_qc_r2",
     benchmark:
-        "benchmarks/01.qc/r2_fastqc_{sample}.txt",
+        "benchmarks/03.short_read_qc/short_read_qc_r2_{sample}.txt",
     threads:
         config['parameter']['threads']['fastqc'],
     shell:
@@ -144,9 +144,9 @@ rule short_read_multiqc:
         report = "multiqc_raw-data_report.html",
         title = "raw-data-multiqc-report",
     log:
-        "logs/01.qc/multiqc.log",
+        "logs/03.short_read_qc/multiqc.log",
     benchmark:
-        "benchmarks/01.qc/multiqc.txt",
+        "benchmarks/03.short_read_qc/multiqc.txt",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:

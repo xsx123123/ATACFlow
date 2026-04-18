@@ -64,12 +64,14 @@ rule merge_DEG:
         summary = '06.deg_enrich/DEG_merge/All_Contrast_Differential_Peaks_Statistics.csv',
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
+    message:
+        "Running merge_DEG",
     conda:
         workflow.source_path("../envs/deg_deseq2.yaml"),
     log:
-        "logs/06.DEG/deseq2_peak.log",
+        "logs/06.DEG/merge_DEG.log",
     benchmark:
-        "benchmarks/deseq2_peak_benchmark.txt",
+        "benchmarks/06.DEG/merge_DEG.txt",
     params:
         deg_dir = '06.deg_enrich/DEG_merge',
         samples = config['sample_csv'],
@@ -132,10 +134,14 @@ rule merge_Enrichments:
         Enrichments_dir = directory("06.deg_enrich/merge_enrich/"),
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
+    benchmark:
+        "benchmarks/06.DEG/merge_Enrichments.txt",
+    message:
+        "Running merge_Enrichments",
     conda:
         workflow.source_path("../envs/go_enrich_r.yaml"),
     log:
-        "logs/06.deg_enrich/go_enrich.log",
+        "logs/06.DEG/merge_Enrichments.log",
     params:
         obo = config['Bowtie2_index']['GO']['obo'],
         go_annotation = config['Bowtie2_index'][config['Genome_Version']]['go_annotation'],
