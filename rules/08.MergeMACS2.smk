@@ -86,12 +86,14 @@ rule macs2_pooled_callpeak:
         """
         macs2 callpeak \
             -t {input.bam} \
+            --nomodel \
             -f BAMPE \
             -g {params.gsize} \
             --name {wildcards.group} \
             --outdir {params.outdir} \
             -q {params.qvalue} \
             --keep-dup all \
+            --call-summits \
             -B --SPMR 2> {log}
         """
 

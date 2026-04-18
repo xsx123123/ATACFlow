@@ -327,3 +327,45 @@ rule generate_count_matrix_ann:
             -c {input.counts_matrix} \
             -o {output.counts_matrix_ann} &> {log}
         """
+
+rule calculate_frip_score:
+    """
+    FRiP (Fraction of Reads in Peaks)
+    ATACseq data standards acceptable FRiP is >0.2
+    Calculate FRiP (Fraction of Reads in Peaks) score for each sample.
+    
+    FRiP measures the proportion of reads that fall within called peaks,
+    which is a quality metric for peak calling performance.
+    """
+    input:
+        bam = "02.mapping/shifted/{sample}.shifted.sorted.bam",
+        peaks = "03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak"
+    output:
+        frip = "03.peak_calling/single/{sample}/{sample}_frip.txt"
+    benchmark:
+        "benchmarks/03.peak_calling/single/calculate_frip_score_{sample}.txt",
+    message:
+        "Running calculate_frip_score",
+    conda:
+        workflow.source_path("../envs/subread.yaml"),
+    resources:
+        **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
+    log:
+        "logs/03.peak_calling/single/calculate_frip_score_{sample}.log"
+    threads: 4
+    shell:
+        """
+        totalReads=$(samtools view -c -F 4 {input.bam})
+        
+        awk 'BEGIN{{OFS="\\t"; print "GeneID\\tChr\\tStart\\tEnd\\tStrand"}} {{print "peak_"NR, $1, $2+1, $3, "."}}' {input.peaks} > {output.frip}.saf
+        
+        peakReads=$(featureCounts -p -a {output.frip}.saf -F SAF -o {output.frip}.counts {input.bam} 2>> {log} | grep -A1 "TotalReads" | tail -n1 | awk '{{print $1}}')
+        
+        frip=$(echo "scale=4; $peakReads / $totalReads" | bc)
+        
+        echo "TotalReads: $totalReads" > {output.frip}
+        echo "PeakReads: $peakReads" >> {output.frip}
+        echo "FRiP: $frip" >> {output.frip}
+        
+        rm -f {output.frip}.saf {output.frip}.counts {output.frip}.counts.summary
+        """
