@@ -6,9 +6,11 @@ def get_java_opts(config, input, resources):
     Get the correct Java options for a given rule.
     """
     mem_gb = max(int(resources.mem_mb / 1024) - 4, 2)
+    
     if mem_gb > 50:
-        mem_gb = 20
-        return f"-Xmx{mem_gb}g -XX:+UseParallelGC -XX:ParallelGCThreads=4"
+        mem_gb = 50 
+        
+    return f"-Xmx{mem_gb}g -XX:+UseParallelGC -XX:ParallelGCThreads=4"
     
 def get_blacklist_path(config):
     """
