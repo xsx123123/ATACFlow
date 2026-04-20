@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 def get_java_opts(config, input, resources):
     """
     Get the correct Java options for a given rule.
