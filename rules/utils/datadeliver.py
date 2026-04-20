@@ -78,7 +78,6 @@ def mapping(
     data_deliver.extend(expand("02.mapping/bamCoverage/{sample}_RPKM.bw", sample=samples.keys()))
     data_deliver.extend(expand("02.mapping/computeMatrix/{sample}_TSS_matrix.gz", sample=samples.keys()))
     data_deliver.extend(expand("02.mapping/plots/{sample}_TSS_enrichment.png", sample=samples.keys()))
-
     # samtools stats & flagstat
     data_deliver.extend(expand(
             "02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv",
