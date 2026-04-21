@@ -175,7 +175,7 @@ rule filter_group_consensus:
     threads: 1
     shell:
         """
-        awk 'BEGIN{{OFS="\t"}} $6>=2 {{print $1, $2, $3, $4, $5, $6, $7, $8, $9}}' {input} > {output} 2> {log}
+        awk 'BEGIN{OFS="\t"} NR==1{next} $8>=2 {print $2,$3,$4,$1,$5,$8}' {input} > {output} 2> {log}
         """
 
 rule create_all_consensus_peaks:
@@ -202,7 +202,7 @@ rule create_all_consensus_peaks:
         """
         TMP_PEAKS=$(mktemp /tmp/all_peaks.XXXXXX.bed)
         cat {input} | sort -k1,1 -k2,2n > "$TMP_PEAKS"
-        mergePeaks -d 250 "$TMP_PEAKS" | awk 'BEGIN{{OFS="\t"}} {{print $2, $3, $4, $1}}' > {output} 2> {log}
+        mergePeaks -d 250 "$TMP_PEAKS" | awk 'BEGIN{OFS="\t"} NR==1{next} {print $2,$3,$4,$1,$5,$8}' > {output} 2> {log}
         rm -f "$TMP_PEAKS"
         """
 
