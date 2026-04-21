@@ -73,6 +73,68 @@ rule macs2_callpeak:
             -B --SPMR 2> {log}
         """
 
+rule genrich_callpeak:
+    """
+    Identify open chromatin regions (peaks) using Genrich on the shifted ATAC-seq BAM file.
+
+    This rule performs peak calling on each individual sample using Genrich,
+    which is designed for ATAC-seq and ChIP-seq data. It first sorts the BAM
+    file by read name (required by Genrich) and then calls peaks with parameters
+    optimized for ATAC-seq.
+
+    Key parameters:
+    - -m 20: Minimum MAPQ score of 20
+    - -p 0.01: Maximum p-value threshold
+    - -q 0.05: Maximum q-value (FDR) threshold
+    - -a 200: Maximum alignment length
+    - -l 50: Minimum length of a genomic region
+    - -g 100: Maximum distance between reads in the same region
+    - -z: Uses the entire fragment for peak calling
+    - -v: Verbose output
+    """
+    input:
+        bam = '02.mapping/shifted/{sample}.shifted.sorted.bam'
+    output:
+        narrow_peak = "03.peak_calling/single_genrich/{sample}/{sample}_peaks.narrowPeak",
+        nsort_bam = temp("03.peak_calling/single_genrich/{sample}/{sample}_nsorted.bam")
+    resources:
+        **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
+    conda:
+        workflow.source_path("../envs/genrich.yaml"),
+    log:
+        "logs/03.peak_calling/single_genrich/genrich_callpeak_{sample}.log",
+    message:
+        "Running Genrich peak calling for {wildcards.sample}",
+    benchmark:
+        "benchmarks/03.peak_calling/single_genrich/genrich_callpeak_{sample}.txt",
+    threads:
+        config['parameter']['threads'].get('genrich', 10),
+    params:
+        min_mapq = 20,
+        max_pval = 0.01,
+        max_qval = 0.05,
+        max_align_len = 200,
+        min_region_len = 50,
+        max_dist = 100,
+        outdir = "03.peak_calling/single_genrich/{sample}"
+    shell:
+        """
+        mkdir -p {params.outdir}
+
+        samtools sort -@ {threads} -n {input.bam} -o {output.nsort_bam} 2> {log}
+
+        Genrich \
+            -t {output.nsort_bam} \
+            -o {output.narrow_peak} \
+            -m {params.min_mapq} \
+            -p {params.max_pval} \
+            -q {params.max_qval} \
+            -a {params.max_align_len} \
+            -l {params.min_region_len} \
+            -g {params.max_dist} \
+            -z -v 2>> {log}
+        """
+
 rule homer_annotate_peaks:
     """
     Annotate peaks relative to gene features using HOMER.
