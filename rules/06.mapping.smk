@@ -443,13 +443,14 @@ rule generate_bigwig_coverage:
         smoothLength = config['parameter']['bamCoverage']['smoothLength'],
         normalizeUsing = "RPKM",
         effectiveGenomeSize = config['genome_info'][config['Genome_Version']]['effectiveGenomeSize'],
+        ignore_chroms = lambda wildcards: get_organelle_names(config)
     shell:
         """
         bamCoverage --bam {input.shifted_sort_bam} -o {output.bw} \
             --binSize {params.binSize} \
             --normalizeUsing {params.normalizeUsing} \
             --effectiveGenomeSize {params.effectiveGenomeSize} \
-            --ignoreForNormalization chrX chrY chrM \
+            --ignoreForNormalization {params.ignore_chroms} \
             -p {threads} &> {log}
         """
 
