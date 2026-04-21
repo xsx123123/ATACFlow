@@ -172,10 +172,11 @@ rule filter_group_consensus:
         "benchmarks/04.consensus/single/filter_group_consensus_{group}.txt",
     message:
         "Running filter_group_consensus",
-    threads: 1
+    threads: 
+        1
     shell:
         """
-        awk 'BEGIN{OFS="\t"} NR==1{next} $8>=2 {print $2,$3,$4,$1,$5,$8}' {input} > {output} 2> {log}
+        awk 'BEGIN{{OFS="\\t"}} NR==1{{next}} $8>=2 {{print $2,$3,$4,$1,$5,$8}}' {input} > {output} 2> {log}
         """
 
 rule create_all_consensus_peaks:
