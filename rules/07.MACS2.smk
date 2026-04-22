@@ -13,9 +13,9 @@ Key Components:
 - create_consensus_peakset: Create consensus peaks from ALL samples
 
 Output Structure:
-- 03.peak_calling/single/{sample}/ - Individual sample MACS2 results
-- 03.peak_calling/single_HOMER/ - Individual sample HOMER annotations
-- 04.consensus/single/ - Consensus peaks from all samples
+- 03.peak_calling/single_macs2/{sample}/ - Individual sample MACS2 results
+- 03.peak_calling/single_macs2_HOMER/ - Individual sample HOMER annotations
+- 04.consensus/single_macs2/ - Consensus peaks from all samples
 """
 
 rule macs2_callpeak:
@@ -39,26 +39,26 @@ rule macs2_callpeak:
         bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai'
     output:
         bed = "02.mapping/shifted/{sample}/{sample}.shifted.sorted.bed",
-        narrow_peak = "03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak",
-        xls = "03.peak_calling/single/{sample}/{sample}_peaks.xls",
-        summits = "03.peak_calling/single/{sample}/{sample}_summits.bed",
-        bdg = "03.peak_calling/single/{sample}/{sample}_treat_pileup.bdg"
+        narrow_peak = "03.peak_calling/single_macs2/{sample}/{sample}_peaks.narrowPeak",
+        xls = "03.peak_calling/single_macs2/{sample}/{sample}_peaks.xls",
+        summits = "03.peak_calling/single_macs2/{sample}/{sample}_summits.bed",
+        bdg = "03.peak_calling/single_macs2/{sample}/{sample}_treat_pileup.bdg"
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/macs2.yaml"),
     log:
-        "logs/03.peak_calling/single/macs2_callpeak_{sample}.log",
+        "logs/03.peak_calling/single_macs2/macs2_callpeak_{sample}.log",
     message:
         "Running MACS2 peak calling for {wildcards.sample}",
     benchmark:
-        "benchmarks/03.peak_calling/single/macs2_callpeak_{sample}.txt",
+        "benchmarks/03.peak_calling/single_macs2/macs2_callpeak_{sample}.txt",
     threads:
         config['parameter']['threads']['macs2'],
     params:
         gsize = config['genome_info'][config['Genome_Version']]['effectiveGenomeSize'],
         qvalue = config['parameter']['macs2']['qvalue'],
-        outdir = "03.peak_calling/single/{sample}"
+        outdir = "03.peak_calling/single_macs2/{sample}"
     shell:
         """
         # Convert filtered BAM to BED
@@ -139,25 +139,25 @@ rule genrich_callpeak:
             -z -v 2>> {log}
         """
 
-rule homer_annotate_peaks:
+rule homer_annotate_peaks_macs2:
     """
     Annotate peaks relative to gene features using HOMER.
     """
     input:
-        peak = "03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak"
+        peak = "03.peak_calling/single_macs2/{sample}/{sample}_peaks.narrowPeak"
     output:
-        annotation = "03.peak_calling/single_HOMER/{sample}_annotation.txt",
-        stats = "03.peak_calling/single_HOMER/{sample}_stats.txt"
+        annotation = "03.peak_calling/single_macs2_HOMER/{sample}_annotation.txt",
+        stats = "03.peak_calling/single_macs2_HOMER/{sample}_stats.txt"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/03.peak_calling/single/homer_annotate_peaks_{sample}.log",
+        "logs/03.peak_calling/single_macs2/homer_annotate_peaks_{sample}.log",
     message:
-        "Running HOMER annotation for {wildcards.sample}",
+        "Running HOMER annotation (MACS2) for {wildcards.sample}",
     benchmark:
-        "benchmarks/03.peak_calling/single/homer_annotate_peaks_{sample}.txt",
+        "benchmarks/03.peak_calling/single_macs2/homer_annotate_peaks_{sample}.txt",
     threads: config['parameter']['threads']['homer']
     params:
         gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
@@ -170,22 +170,22 @@ rule homer_annotate_peaks:
             -p {threads} > {output.annotation} 2> {log}
         """
 
-rule extend_summits:
+rule extend_summits_macs2:
     """
     Extend MACS2 summits by ±250bp to create fixed 500bp regions per sample.
     """
     input:
-        "03.peak_calling/single/{sample}/{sample}_summits.bed"
+        "03.peak_calling/single_macs2/{sample}/{sample}_summits.bed"
     output:
-        "04.consensus/single/{sample}_summits_extended.bed"
+        "04.consensus/single_macs2/{sample}_summits_extended.bed"
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/04.consensus/single/extend_summits_{sample}.log",
+        "logs/04.consensus/single_macs2/extend_summits_{sample}.log",
     benchmark:
-        "benchmarks/04.consensus/single/extend_summits_{sample}.txt",
+        "benchmarks/04.consensus/single_macs2/extend_summits_{sample}.txt",
     message:
-        "Running extend_summits",
+        "Running extend_summits (MACS2)",
     threads: 1
     shell:
         """
@@ -198,46 +198,46 @@ rule extend_summits:
         }}' {input} > {output} 2> {log}
         """
 
-rule merge_peaks_by_group:
+rule merge_peaks_by_group_macs2:
     """
     Merge extended peaks within each group using HOMER mergePeaks (-d 250).
     """
     input:
-        lambda wildcards: expand("04.consensus/single/{sample}_summits_extended.bed", sample=groups[wildcards.group])
+        lambda wildcards: expand("04.consensus/single_macs2/{sample}_summits_extended.bed", sample=groups[wildcards.group])
     output:
-        "04.consensus/single/{group}.mergePeaks.bed"
+        "04.consensus/single_macs2/{group}.mergePeaks.bed"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/04.consensus/single/merge_peaks_by_group_{group}.log",
+        "logs/04.consensus/single_macs2/merge_peaks_by_group_{group}.log",
     message:
-        "Merging peaks for group {wildcards.group}",
+        "Merging peaks for group {wildcards.group} (MACS2)",
     benchmark:
-        "benchmarks/04.consensus/single/merge_peaks_by_group_{group}.txt",
+        "benchmarks/04.consensus/single_macs2/merge_peaks_by_group_{group}.txt",
     threads: 1
     shell:
         """
         mergePeaks {input} -d 250 > {output} 2> {log}
         """
 
-rule filter_group_consensus:
+rule filter_group_consensus_macs2:
     """
     Filter group-level merged peaks to retain only peaks supported by ≥2 replicates.
     """
     input:
-        "04.consensus/single/{group}.mergePeaks.bed"
+        "04.consensus/single_macs2/{group}.mergePeaks.bed"
     output:
-        "04.consensus/single/{group}.consensus.bed"
+        "04.consensus/single_macs2/{group}.consensus.bed"
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/04.consensus/single/filter_group_consensus_{group}.log",
+        "logs/04.consensus/single_macs2/filter_group_consensus_{group}.log",
     benchmark:
-        "benchmarks/04.consensus/single/filter_group_consensus_{group}.txt",
+        "benchmarks/04.consensus/single_macs2/filter_group_consensus_{group}.txt",
     message:
-        "Running filter_group_consensus",
+        "Running filter_group_consensus (MACS2)",
     threads: 
         1
     shell:
@@ -245,25 +245,25 @@ rule filter_group_consensus:
         awk 'BEGIN{{OFS="\\t"}} NR==1{{next}} $8>=2 {{print $2,$3,$4,$1,$5,$8}}' {input} > {output} 2> {log}
         """
 
-rule create_all_consensus_peaks:
+rule create_all_consensus_peaks_macs2:
     """
     Create final consensus peakset by merging all group-level consensus peaks.
     Converts HOMER mergePeaks output to standard BED4 for downstream compatibility.
     """
     input:
-        expand("04.consensus/single/{group}.consensus.bed", group=groups.keys())
+        expand("04.consensus/single_macs2/{group}.consensus.bed", group=groups.keys())
     output:
-        "04.consensus/single/all_samples_consensus_peaks.bed"
+        "04.consensus/single_macs2/all_samples_consensus_peaks.bed"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     message:
-        "Running create_all_consensus_peaks",
+        "Running create_all_consensus_peaks (MACS2)",
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/04.consensus/single/create_all_consensus_peaks.log",
+        "logs/04.consensus/single_macs2/create_all_consensus_peaks.log",
     benchmark:
-        "benchmarks/04.consensus/single/create_all_consensus_peaks.txt",
+        "benchmarks/04.consensus/single_macs2/create_all_consensus_peaks.txt",
     threads: 1
     shell:
         """
@@ -274,25 +274,25 @@ rule create_all_consensus_peaks:
         """
 
 
-rule homer_annotate_consensus_peaks:
+rule homer_annotate_consensus_peaks_macs2:
     """
     Annotate consensus peaks relative to gene features using HOMER.
     """
     input:
-        consensus = "04.consensus/single/all_samples_consensus_peaks.bed"
+        consensus = "04.consensus/single_macs2/all_samples_consensus_peaks.bed"
     output:
-        annotation = "04.consensus/single/all_samples_consensus_peaks_annotation.txt",
-        stats = "04.consensus/single/all_samples_consensus_peaks_stats.txt"
+        annotation = "04.consensus/single_macs2/all_samples_consensus_peaks_annotation.txt",
+        stats = "04.consensus/single_macs2/all_samples_consensus_peaks_stats.txt"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/04.consensus/single/homer_annotate_consensus_peaks.log",
+        "logs/04.consensus/single_macs2/homer_annotate_consensus_peaks.log",
     message:
-        "Running HOMER annotation for consensus peaks",
+        "Running HOMER annotation for consensus peaks (MACS2)",
     benchmark:
-        "benchmarks/04.consensus/single/homer_annotate_consensus_peaks.txt",
+        "benchmarks/04.consensus/single_macs2/homer_annotate_consensus_peaks.txt",
     threads: 
         config['parameter']['threads']['homer']
     params:
@@ -306,29 +306,29 @@ rule homer_annotate_consensus_peaks:
             -p {threads} > {output.annotation} 2> {log}
         """
 
-rule generate_count_matrix_by_featureCounts:
+rule generate_count_matrix_by_featureCounts_macs2:
     """
     Generate a read count matrix using featureCounts for the consensus peakset.
     """
     input:
-        consensus = "04.consensus/single/all_samples_consensus_peaks.bed",
+        consensus = "04.consensus/single_macs2/all_samples_consensus_peaks.bed",
         bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
     output:
-        counts_matrix = "04.consensus/single/consensus_counts_matrix.txt",
-        counts_clean = "04.consensus/single/consensus_counts_matrix.clean.txt",
-        summary = "04.consensus/single/consensus_counts_matrix.txt.summary",
-        saf = temp("04.consensus/single/consensus_peaks.saf"),
-        description = "04.consensus/single/matrix_description.txt"
+        counts_matrix = "04.consensus/single_macs2/consensus_counts_matrix.txt",
+        counts_clean = "04.consensus/single_macs2/consensus_counts_matrix.clean.txt",
+        summary = "04.consensus/single_macs2/consensus_counts_matrix.txt.summary",
+        saf = temp("04.consensus/single_macs2/consensus_peaks.saf"),
+        description = "04.consensus/single_macs2/matrix_description.txt"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/subread.yaml"),
     log:
-        "logs/04.consensus/single/generate_count_matrix_by_featureCounts.log",
+        "logs/04.consensus/single_macs2/generate_count_matrix_by_featureCounts.log",
     message:
-        "Running featureCounts for consensus peaks",
+        "Running featureCounts for consensus peaks (MACS2)",
     benchmark:
-        "benchmarks/04.consensus/single/generate_count_matrix_by_featureCounts.txt",
+        "benchmarks/04.consensus/single_macs2/generate_count_matrix_by_featureCounts.txt",
     threads: 
         config['parameter']['threads'].get('featurecounts', 8)  # 添加默认值
     params:
@@ -363,25 +363,25 @@ rule generate_count_matrix_by_featureCounts:
         printf "FeatureCounts Version: %s\n" "$(featureCounts -v 2>&1 | head -1)" >> {output.description}
         """
 
-rule generate_count_matrix_ann:
+rule generate_count_matrix_ann_macs2:
     """
     Add gene annotation to the count matrix.
     """
     input:
-        annotation = "04.consensus/single/all_samples_consensus_peaks_annotation.txt",
-        counts_matrix = "04.consensus/single/consensus_counts_matrix.txt",
+        annotation = "04.consensus/single_macs2/all_samples_consensus_peaks_annotation.txt",
+        counts_matrix = "04.consensus/single_macs2/consensus_counts_matrix.txt",
     output:
-        counts_matrix_ann = "04.consensus/single/consensus_counts_matrix_ann.txt",
+        counts_matrix_ann = "04.consensus/single_macs2/consensus_counts_matrix_ann.txt",
     message:
-        "Running generate_count_matrix_ann",
+        "Running generate_count_matrix_ann (MACS2)",
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/04.consensus/single/generate_count_matrix_ann.log",
+        "logs/04.consensus/single_macs2/generate_count_matrix_ann.log",
     benchmark:
-        "benchmarks/04.consensus/single/generate_count_matrix_ann.txt",
+        "benchmarks/04.consensus/single_macs2/generate_count_matrix_ann.txt",
     params:
         path = workflow.source_path(config['parameter']['merge_peaks']['path'])
     threads: 
@@ -395,7 +395,7 @@ rule generate_count_matrix_ann:
             -o {output.counts_matrix_ann} &> {log}
         """
 
-rule calculate_frip_score:
+rule calculate_frip_score_macs2:
     """
     FRiP (Fraction of Reads in Peaks)
     ATACseq data standards acceptable FRiP is >0.2
@@ -406,19 +406,19 @@ rule calculate_frip_score:
     """
     input:
         bam = "02.mapping/shifted/{sample}.shifted.sorted.bam",
-        peaks = "03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak"
+        peaks = "03.peak_calling/single_macs2/{sample}/{sample}_peaks.narrowPeak"
     output:
-        frip = "03.peak_calling/single/{sample}/{sample}_frip.txt"
+        frip = "03.peak_calling/single_macs2/{sample}/{sample}_frip.txt"
     benchmark:
-        "benchmarks/03.peak_calling/single/calculate_frip_score_{sample}.txt",
+        "benchmarks/03.peak_calling/single_macs2/calculate_frip_score_{sample}.txt",
     message:
-        "Running calculate_frip_score",
+        "Running calculate_frip_score (MACS2)",
     conda:
         workflow.source_path("../envs/subread.yaml"),
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/03.peak_calling/single/calculate_frip_score_{sample}.log"
+        "logs/03.peak_calling/single_macs2/calculate_frip_score_{sample}.log"
     threads: 4
     shell:
         """
