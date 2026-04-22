@@ -468,7 +468,7 @@ rule tss_enrichment_analysis:
     message:
         "Running tss_enrichment_analysis",
     params:
-        gene_bed = config['Bowtie2_index'][config['Genome_Version']]['bed'],
+        gene_bed = config['Bowtie2_index'][config['Genome_Version']]['tss_bed'],
         referencePoint = config['parameter']['draw_tss_plot']['referencePoint'],
         range_up_down = config['parameter']['draw_tss_plot']['range'],
     log:
