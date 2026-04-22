@@ -86,10 +86,11 @@ Bowtie2_index:
       genome_fa: GRCm39/GRCm39.genome.fa
       genome_gtf: GRCm39/gencode.vM38.annotation.gtf
       genome_gff: GRCm39/gencode.vM38.annotation.gff3
-      bed: GRCm39
-      go_annotation: GRCm39
+      bed: GRCm39/gencode.vM38.annotation.bed12
+      go_annotation: GRCm39/mgigene_go_annotation.tsv
       tss_bed:  GRCm39/gencode.vM38.annotation.tss.bed
-      autosomes: GRCm39
+      autosomes: GRCm39/GRCm39_autosomes.txt
+      blacklists: GRCm39/mm39.excluderanges.bed
       ploidy: 2
     GO:
       obo: go_database/go-basic.obo
@@ -108,4 +109,7 @@ genome_info:
     plast: Chrpla
   hg38:
     effectiveGenomeSize: 3291585349
+    chrMID: chrM
+  GRCm39:
+    effectiveGenomeSize: 2728222451
     chrMID: chrM
