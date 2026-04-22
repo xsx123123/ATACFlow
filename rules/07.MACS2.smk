@@ -38,6 +38,7 @@ rule macs2_callpeak:
         bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',
         bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai'
     output:
+        bed = "02.mapping/shifted/{sample}/{sample}.shifted.sorted.bed",
         narrow_peak = "03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak",
         xls = "03.peak_calling/single/{sample}/{sample}_peaks.xls",
         summits = "03.peak_calling/single/{sample}/{sample}_summits.bed",
@@ -60,9 +61,12 @@ rule macs2_callpeak:
         outdir = "03.peak_calling/single/{sample}"
     shell:
         """
+        # Convert filtered BAM to BED
+        bedtools bamtobed -i {input.bam} > {output.bed} 2>> {log}
+        # call peak by macs2
         macs2 callpeak \
-            -t {input.bam} \
-            -f BAMPE \
+            -t {output.bedpe} \
+            -f BEDPE \
             --nomodel \
             -g {params.gsize} \
             --name {wildcards.sample} \
