@@ -9,6 +9,7 @@ can_use_genome_version:
   - Lsat_Salinas_v11_wx
   - Lsat_Salinas_v8_wx
   - hg38
+  - GRCm39
   - GO
 # MCP Genome Version
 mcp_genome_version: 
@@ -24,6 +25,9 @@ mcp_genome_version:
   hg38:
     name: hg38
     description: Human reference genome (GRCh38)
+  GRCm39:
+    name: GRCm39
+    description: Mouse reference genome (GRCm39)
 # Bowtie2 Reference PATH
 Bowtie2_index:
     Lsat_Salinas_v11:
@@ -74,6 +78,18 @@ Bowtie2_index:
       tss_bed:  hg38/gencode.v49.annotation_tss.deal.bed
       blacklists: hg38/hg38-blacklist.v2.bed
       autosomes: hg38/hg38_autosomes.txt
+      ploidy: 2
+    GRCm39:
+      index: GRCm39/GRCm39_bowtie2_index/GRCm39_bowtie2_index
+      chromap_index: hg38/GRCm39.genome.chromap
+      gene_gtf: GRCm39/gencode.vM38.genes.gtf
+      genome_fa: GRCm39/GRCm39.genome.fa
+      genome_gtf: GRCm39/gencode.vM38.annotation.gtf
+      genome_gff: GRCm39/gencode.vM38.annotation.gff3
+      bed: GRCm39
+      go_annotation: GRCm39
+      tss_bed:  GRCm39/gencode.vM38.annotation.tss.bed
+      autosomes: GRCm39
       ploidy: 2
     GO:
       obo: go_database/go-basic.obo
