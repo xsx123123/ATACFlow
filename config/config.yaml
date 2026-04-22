@@ -39,7 +39,7 @@ convert_md5: 'link_dir'     # Directory name for symbolic links to raw data
 r1_suffix: _R1.fq.gz        # File suffix for R1 (forward) reads
 r2_suffix: _R2.fq.gz        # File suffix for R2 (reverse) reads
 md5: MD5.txt                # MD5 checksum filename for processed data
-pipeline_version: "ATACFlow v0.0.5"  # Pipeline version for reproducibility tracking
+pipeline_version: "ATACFlow v0.0.6"  # Pipeline version for reproducibility tracking
 
 # ATAC-seq mapping tools
 mapping_tools: bowtie2
