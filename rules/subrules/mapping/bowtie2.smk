@@ -51,18 +51,22 @@ rule Bowtie2_mapping:
     params:
         index = config['Bowtie2_index'][config['Genome_Version']]['index'],
         DNA_fragment_length = config['parameter']['bowtie2']['DNA_fragment_length'],
+        mode_flag = "--local" if config['parameter']['bowtie2'].get('mode', 'end-to-end') == 'local' else "",
+        no_mixed_flag = "--no-mixed" if config['parameter']['bowtie2'].get('no_mixed', False) else "",
+        no_discordant_flag = "--no-discordant" if config['parameter']['bowtie2'].get('no_discordant', False) else "",
+        k_flag = "-k " + str(config['parameter']['bowtie2'].get('max_alignments', 1)) if config['parameter']['bowtie2'].get('max_alignments') is not None else "",
     threads:
         config['parameter']['threads']['bowtie2'],
     shell:
         """
         ulimit -n 65535 2>/dev/null || true
-        bowtie2 --local \
-            -k 1 \
+        bowtie2 {params.mode_flag} \
+            {params.k_flag} \
             -p {threads} \
             -X {params.DNA_fragment_length} \
             --very-sensitive \
-            --no-mixed \
-            --no-discordant \
+            {params.no_mixed_flag} \
+            {params.no_discordant_flag} \
             -x {params.index} \
             -1 {input.r1} \
             -2 {input.r2} 2> {log.stats} | \

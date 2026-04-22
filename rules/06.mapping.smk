@@ -327,9 +327,9 @@ rule filter_blacklist_and_mito:
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     params:
-        mapq = 30,
-        flag_filter = 1548,
-        flag_req = 2,
+        mapq = config['parameter'].get('filter_bam', {}).get('mapq', 30),
+        flag_filter = config['parameter'].get('filter_bam', {}).get('flag_filter', 1548),
+        flag_req = config['parameter'].get('filter_bam', {}).get('flag_req', 2),
         blacklist = lambda wildcards: get_blacklist_path(config),
         organelle_filter = lambda wildcards: " && ".join([f'rname != \\"{n}\\"' for n in get_organelle_names(config).split()]) if get_organelle_names(config) else "1"
     threads: 

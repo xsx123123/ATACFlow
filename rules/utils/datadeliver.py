@@ -146,6 +146,27 @@ def peak_calling(samples: Dict = None, data_deliver: List = None) -> List:
             "03.peak_calling/single/{sample}/{sample}_frip.txt", sample=samples.keys()
         )
     )
+    data_deliver.extend(
+        expand(
+            "03.peak_calling/single_macs3/{sample}/{sample}_peaks.narrowPeak", sample=samples.keys()
+        )
+    )
+    data_deliver.extend(
+        expand(
+            "03.peak_calling/single_macs3/{sample}/{sample}_peaks.xls", sample=samples.keys()
+        )
+    )
+    data_deliver.extend(
+        expand(
+            "03.peak_calling/single_macs3/{sample}/{sample}_summits.bed", sample=samples.keys()
+        )
+    )
+    data_deliver.extend(
+        expand(
+            "03.peak_calling/single_macs3/{sample}/{sample}_treat_pileup.bdg", sample=samples.keys()
+        )
+    )
+
 
     return data_deliver
 
