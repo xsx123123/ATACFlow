@@ -37,7 +37,7 @@ parameter:
     mode: "end-to-end"         # "local" or "end-to-end"; end-to-end recommended for plants
     no_mixed: false            # discard alignments with only one end mapped
     no_discordant: false       # discard discordant read pairs
-    max_alignments:ma 1          # -k parameter; set to null to disable
+    max_alignments: 1          # -k parameter; set to null to disable
   filter_bam:
     flag_filter: 1548    # samtools -F: remove unmapped(4)+mate_unmapped(8)+QC_fail(512)+duplicate(1024)
     flag_req: 2         # samtools -f: 2=proper pair, 1=paired, 0=no restriction (recommended for plants)
