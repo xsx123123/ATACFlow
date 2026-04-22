@@ -56,7 +56,7 @@ rule DEG:
     with the biological processes under investigation.
     """
     input:
-        counts = "04.consensus/single/consensus_counts_matrix_ann.txt",
+        counts = "04.consensus/single_macs3/consensus_counts_matrix_ann.txt",
     output:
         output = '06.deg_enrich/DEG/Global_PCA.pdf',
         summary = '06.deg_enrich/DEG/All_Contrast_Differential_Peaks_Statistics.csv',
