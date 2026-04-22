@@ -50,4 +50,4 @@ peak_calling:
   # When true: merge replicates within each group, then call peaks (more robust)
   # When false: use single-sample consensus peaks
   # Note: IDR analysis is still performed if group has >= 2 replicates
-  use_pooled_peaks: true
+  use_pooled_peaks: false
