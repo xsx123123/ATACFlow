@@ -98,40 +98,46 @@ graph LR
     %% 2. Mapping & Filtering %%
     subgraph S2 ["Step 2: Mapping & Filtering"]
         direction TB
-        Clean --> Bowtie2[Bowtie2 Mapping]:::map
-        Bowtie2 --> Filter[Structural Filtering]:::base
-        Filter --> Shift[Fragment Shifting]:::base
+        Clean --> Align{Bowtie2 / Chromap}:::map
+        Align --> Sort[Sort & Index]:::base
+        Sort --> AddRG[Add Read Groups]:::base
+        AddRG --> MarkDup[Mark Duplicates]:::base
+        MarkDup --> FilterBAM[Filter Blacklist & Organelle]:::base
+        FilterBAM --> Shift[Fragment Shifting]:::base
         Shift --> BAM[Processed BAM]:::map
+        BAM --> BigWig[BigWig Coverage]:::base
+        BigWig --> TSS[TSS Enrichment]:::base
     end
 
-    %% 3. Peak Identification - Three Paths (v0.0.5 Update) %%
+    %% 3. Peak Identification - Three Paths %%
     subgraph S3 ["Step 3: Peak Calling"]
         direction TB
-        BAM --> SinglePeaks[Single Sample MACS2]:::core
+        BAM --> SingleMACS2[Single Sample MACS2]:::core
         BAM -.-> SingleMACS3[Single Sample MACS3]:::core
         BAM -.-> SingleGenrich[Single Sample Genrich]:::core
-        SinglePeaks --> IDRAnalysis[IDR Analysis if ge 2 reps]:::core
-        SinglePeaks --> SingleConsensus[Single Consensus]:::core
+        SingleMACS2 --> IDR[IDR Analysis if ≥2 reps]:::core
+        SingleMACS2 --> SingleCon[Single Consensus]:::core
+        SingleMACS3 --> SingleCon
+        SingleGenrich --> SingleCon
 
-        BAM --> PooledPeaks{Pooled?}:::decision
-        PooledPeaks -->|Yes| MergeBAM[Merge Group BAMs]:::core
+        BAM --> PoolCheck{Pooled?}:::decision
+        PoolCheck -->|Yes| MergeBAM[Merge Group BAMs]:::core
         MergeBAM --> MergeMACS2[Merged Sample MACS2]:::core
-        MergeMACS2 --> PooledConsensus[Pooled Consensus]:::core
-        PooledPeaks -->|No| SingleConsensus
+        MergeMACS2 --> PoolCon[Pooled Consensus]:::core
+        PoolCheck -->|No| SingleCon
 
-        SingleConsensus --> DEG[DEG Analysis]:::adv
-        PooledConsensus --> DEG
+        SingleCon --> DEG[DEG Analysis]:::adv
+        PoolCon --> DEG
     end
 
     %% 4. Advanced Analysis %%
     subgraph S4 ["Step 4: Advanced Analysis"]
         direction TB
         BAM -.-> ATACv[ATACv QC]:::adv
-        MergeMACS2 -.-> TOBIAS[TOBIAS Motifs]:::adv
-        PooledConsensus -.-> DEGMerge[DESeq2 Merged]:::adv
-        SinglePeaks -.-> DEGSingle[DESeq2 Single]:::adv
-        DEGMerge --> EnrichMerge[GO KEGG Enrichment Merged]:::adv
-        DEGSingle --> EnrichSingle[GO KEGG Enrichment Single]:::adv
+        BAM -.-> FRiP[FRiP Score]:::adv
+        SingleMACS2 -.-> TOBIAS[TOBIAS Motifs]:::adv
+        MergeMACS2 -.-> TOBIAS
+        DEG --> Enrich[GO / KEGG Enrichment]:::adv
     end
 
     %% 5. Delivery %%
@@ -139,9 +145,10 @@ graph LR
 
     %% -------------------- Connection Logic -------------------- %%
     ATACv --> Report
+    FRiP --> Report
+    TSS --> Report
     TOBIAS --> Report
-    EnrichMerge --> Report
-    EnrichSingle --> Report
+    Enrich --> Report
 
     %% -------------------- Subgraph Styling: Transparency -------------------- %%
     %% fill:none = Transparent %%
