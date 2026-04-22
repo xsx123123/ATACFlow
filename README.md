@@ -14,12 +14,19 @@ ATACFlow is a comprehensive ATAC-seq data analysis pipeline that covers the comp
 - **Optimized**: Integrated FRiP (Fraction of Reads in Peaks) quality control into the pipeline
 - **Fixed**: Fixed bug where DEG analysis could not run in single sample group cases
 - **Improved**: Added automatic fallback logic, automatically using single sample consensus peaks when pooled peaks cannot be used
+- **New**: Multi-engine Peak Calling support — added **Genrich** and **MACS3 BED-shift** as alternative peak callers alongside MACS2
+- **New**: Configurable Bowtie2 alignment parameters (`mode`, `no_mixed`, `no_discordant`, `max_alignments`) for plant genomes in `run_parameter.yaml`
+- **New**: Configurable BAM filtering parameters (`flag_filter`, `flag_req`, `mapq`) in `run_parameter.yaml`
+- **New**: Added `macs3.yaml` and `genrich.yaml` Conda environments
+- **New**: Added **GRCm39** (Mouse) reference genome support in `reference.yaml`
+- **Improved**: Dynamic organelle exclusion for `bamCoverage` normalization via `get_organelle_names()`
 
 ## 🌟 Core Highlights
 
 ATACFlow is more than just a basic alignment and Peak Calling pipeline; it integrates multiple cutting-edge features:
 
-*   **Dual-engine alignment support**: Supports both **Bowtie2** and **Chromap** alignment engines, which can be flexibly switched via configuration files. **Uses Chromap by default** (optimized for large-scale ATAC-seq data, faster processing); Bowtie2 provides broader compatibility and fine-grained control.
+*   **Dual-engine alignment support**: Supports both **Bowtie2** and **Chromap** alignment engines, which can be flexibly switched via configuration files. **Uses Chromap by default** (optimized for large-scale ATAC-seq data, faster processing); Bowtie2 provides broader compatibility and fine-grained control. Bowtie2 parameters (`--local`/`--end-to-end`, `--no-mixed`, `--no-discordant`) are now fully configurable for plant genomes.
+*   **Multi-engine Peak Calling**: Supports **MACS2** (default BAMPE mode), **MACS3** (legacy BED-shift mode with `--shift -75 --extsize 150`), and **Genrich** as alternative peak callers. The BED-shift mode is especially optimized for plant genomes where BAMPE may be too stringent.
 *   **Advanced footprint analysis (TOBIAS Footprinting)**: Integrates complete TOBIAS workflow (ATACorrect -> EstimateFootprints -> BINDetect), enabling inference of transcription factor dynamic binding at single-base resolution.
 *   **AI-driven automated reporting**: Uses LLM-driven AI engine combined with containerization technology (Apptainer/Docker) to automatically generate interactive analysis reports with biological interpretation.
 *   **Deep botanical optimization**: Implements dynamic removal and structural filtering algorithms for the high proportion of mitochondrial/chloroplast contamination in plant genomes, maximizing retention of valid reads.
@@ -101,6 +108,8 @@ graph LR
     subgraph S3 ["Step 3: Peak Calling"]
         direction TB
         BAM --> SinglePeaks[Single Sample MACS2]:::core
+        BAM -.-> SingleMACS3[Single Sample MACS3]:::core
+        BAM -.-> SingleGenrich[Single Sample Genrich]:::core
         SinglePeaks --> IDRAnalysis[IDR Analysis if ge 2 reps]:::core
         SinglePeaks --> SingleConsensus[Single Consensus]:::core
 
@@ -194,8 +203,10 @@ Align high-quality reads to the reference genome and perform rigorous filtering 
 Identify open chromatin regions and perform functional annotation.
 
 #### Tools
-- MACS2: Peak identification.
-- HOMER: Peak annotation.
+- **MACS2**: Peak identification (default, BAMPE mode with Tn5 shift).
+- **MACS3**: Legacy peak calling (BED mode with `--shift -75 --extsize 150`), recommended for plant genomes.
+- **Genrich**: Alternative peak caller optimized for ATAC-seq/ChIP-seq.
+- **HOMER**: Peak annotation.
 
 #### Processing Steps
 - **Peak Identification**: Identify open chromatin regions using MACS2.
@@ -287,7 +298,9 @@ ATACFlow/
 │   ├── merged/            # Merged sample results (when run_pooled=True)
 │   └── ataqv/             # ATAC-seq specific QC results
 ├── 03.peak_calling/       # Peak calling results
-│   ├── single/            # Single sample peak calling (always run)
+│   ├── single/            # Single sample peak calling with MACS2 (always run)
+│   ├── single_macs3/      # Single sample peak calling with MACS3 BED-shift mode
+│   ├── single_genrich/    # Single sample peak calling with Genrich
 │   ├── single_HOMER/      # Single sample peak annotation
 │   ├── pooled/            # Group-level pooled peak calling (when run_pooled=True)
 │   ├── pooled_HOMER/      # Group-level peak annotation
@@ -620,6 +633,16 @@ parameter:
     macs2: 8              # MACS2 threads
     homer: 10             # HOMER threads
     featurecounts: 16     # featureCounts threads
+  bowtie2:
+    DNA_fragment_length: 1000  # animal: 700-1000, plant: 1000-2000
+    mode: "end-to-end"         # "local" or "end-to-end"; end-to-end recommended for plants
+    no_mixed: false            # discard alignments with only one end mapped
+    no_discordant: false       # discard discordant read pairs
+    max_alignments: null       # -k parameter; null to disable
+  filter_bam:
+    flag_filter: 1548          # samtools -F: remove unmapped/QC-fail/duplicate
+    flag_req: 2                # samtools -f: 2=proper pair, 0=no restriction (plants)
+    mapq: 30
   macs2:
     qvalue: 0.05          # Peak Calling significance threshold
   DEG:
