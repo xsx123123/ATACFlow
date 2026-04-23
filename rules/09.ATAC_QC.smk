@@ -71,7 +71,7 @@ rule ataqv_qc:
     input:
         shifted_sort_bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',
         shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai',
-        narrow_peak = "03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak",
+        narrow_peak = "03.peak_calling/single_macs3/{sample}/{sample}_peaks.narrowPeak",
     output:
         json = "02.mapping/ataqv/{sample}.ataqv.json",
         log_out = "02.mapping/ataqv/{sample}.ataqv.out"
