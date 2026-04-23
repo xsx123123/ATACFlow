@@ -8,6 +8,7 @@ can_use_genome_version:
   - Lsat_Salinas_v11
   - Lsat_Salinas_v11_wx
   - Lsat_Salinas_v8_wx
+  - ITAG4.1
   - hg38
   - GRCm39
   - GO
@@ -22,6 +23,9 @@ mcp_genome_version:
   Lsat_Salinas_v8_wx:
     name: Lsat_Salinas_v8_wx
     description: Lettuce reference genome (v8) power by wang xing
+  ITAG4.1:
+    name: ITAG4.1
+    description: tomato reference genome (ITAG4.1) 
   hg38:
     name: hg38
     description: Human reference genome (GRCh38)
@@ -66,6 +70,18 @@ Bowtie2_index:
       tss_bed:  Lactuca_sativa_V11_xw/Lsat_Salinas_v11.xw.tss.deal.bed
       autosomes: Lactuca_sativa_V11_xw/Lactuca_sativa_V11_wx_autosomes.txt
       ploidy: 2
+    ITAG4.1:
+      index: ITAG4.1/ITAG4.1_bowtie2_index/ITAG4.1_bowtie2_index
+      chromap_index: ITAG4.1/S_lycopersicum_chromosomes.4.00.chromap
+      gene_gtf: ITAG4.1/ITAG4.1_gene_models.only_gene.gtf
+      genome_fa: ITAG4.1/S_lycopersicum_chromosomes.4.00.fa
+      genome_gtf: ITAG4.1/ITAG4.1_gene_models.gtf
+      genome_gff: ITAG4.1/ITAG4.1_gene_models.gff
+      bed: ITAG4.1/ITAG4.1_gene_models.bed12
+      go_annotation: ITAG4.1/ITAG4.1_blast2go_annot.annot_deal
+      tss_bed:  ITAG4.1/ITAG4.1_gene_models.tss.bed
+      autosomes: ITAG4.1/S_lycopersicum_chromosomes.4.00.autosomes.txt
+      ploidy: 2
     hg38:
       index: hg38/GRCh38.p14_bowtie2/GRCh38.p14_index
       chromap_index: hg38/GRCh38.p14.chromap_index
@@ -105,6 +121,10 @@ genome_info:
     plast: Chrpla
   Lsat_Salinas_v8_wx:
     effectiveGenomeSize: 2399609109
+    chrMID: ChrMT
+    plast: Chrpla
+  ITAG4.1:
+    effectiveGenomeSize: 782520033
     chrMID: ChrMT
     plast: Chrpla
   hg38:
