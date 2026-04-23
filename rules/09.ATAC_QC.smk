@@ -45,46 +45,69 @@ def get_organelle_filter_expr(wildcards):
         # Return the value directly if it's not a list
         return chrMID
 
-rule ataqv_qc:
+rule ataqv_qc_macs3:
     """
-    Perform comprehensive ATAC-seq quality control assessment using Ataqv.
-
-    This rule runs Ataqv (ATAC-seq Quality Validation), a specialized tool designed
-    specifically for evaluating the quality of ATAC-seq experiments. Ataqv computes
-    a comprehensive set of quality metrics that assess the success of the Tn5
-    transposase assay and the overall quality of the sequencing data.
-
-    Key ATAC-seq quality metrics evaluated include:
-    - TSS enrichment score: Measures enrichment of reads at transcription start sites
-    - Fragment length distribution: Assesses nucleosome positioning patterns
-    - Library complexity: Estimates unique molecules and sequencing saturation
-    - Mitochondrial read proportion: Evaluates organellar contamination levels
-    - Peak calling quality metrics: Assesses the quality of identified peaks
-    - Read alignment quality: Evaluates mapping statistics and quality
-
-    Ataqv generates detailed JSON and text output that can be visualized with
-    specialized tools, providing a comprehensive assessment of ATAC-seq experiment
-    quality and identifying potential issues that may affect downstream analysis.
-    This QC step is critical for ensuring that only high-quality ATAC-seq data
-    proceeds to peak calling and differential accessibility analysis.
+    Perform comprehensive ATAC-seq QC using Ataqv with MACS3 peaks.
     """
     input:
         shifted_sort_bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',
         shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai',
         narrow_peak = "03.peak_calling/single_macs3/{sample}/{sample}_peaks.narrowPeak",
     output:
-        json = "02.mapping/ataqv/{sample}.ataqv.json",
-        log_out = "02.mapping/ataqv/{sample}.ataqv.out"
+        json = "02.mapping/ataqv_macs3/{sample}.ataqv.json",
+        log_out = "02.mapping/ataqv_macs3/{sample}.ataqv.out"
     benchmark:
-        "benchmarks/05.ATAC_QC/ataqv_qc_{sample}.txt",
+        "benchmarks/05.ATAC_QC/ataqv_qc_macs3_{sample}.txt",
     conda:
         workflow.source_path("../envs/ataqv.yaml"),
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/05.ATAC_QC/ataqv_qc_{sample}.log",
+        "logs/05.ATAC_QC/ataqv_qc_macs3_{sample}.log",
     message:
-        "Running ataqv QC on {wildcards.sample}",
+        "Running ataqv QC (MACS3) on {wildcards.sample}",
+    params:
+        tss = config['Bowtie2_index'][config['Genome_Version']]['tss_bed'],
+        autosomes = config['Bowtie2_index'][config['Genome_Version']]['autosomes'],
+        mito_name = lambda wildcards:get_organelle_filter_expr(wildcards),
+        organism = config['species']
+    threads:
+        1
+    shell:
+        """
+        ataqv \
+            --peak-file {input.narrow_peak} \
+            --name {wildcards.sample} \
+            --metrics-file {output.json} \
+            --tss-file {params.tss} \
+            --autosomal-reference-file {params.autosomes} \
+            --mitochondrial-reference-name {params.mito_name} \
+            --ignore-read-groups \
+            {params.organism} \
+            {input.shifted_sort_bam} > {output.log_out} 2> {log}
+        """
+
+rule ataqv_qc_macs2:
+    """
+    Perform comprehensive ATAC-seq QC using Ataqv with MACS2 peaks.
+    """
+    input:
+        shifted_sort_bam = '02.mapping/shifted/{sample}.shifted.sorted.bam',
+        shifted_sort_bam_bai = '02.mapping/shifted/{sample}.shifted.sorted.bam.bai',
+        narrow_peak = "03.peak_calling/single_macs2/{sample}/{sample}_peaks.narrowPeak",
+    output:
+        json = "02.mapping/ataqv_macs2/{sample}.ataqv.json",
+        log_out = "02.mapping/ataqv_macs2/{sample}.ataqv.out"
+    benchmark:
+        "benchmarks/05.ATAC_QC/ataqv_qc_macs2_{sample}.txt",
+    conda:
+        workflow.source_path("../envs/ataqv.yaml"),
+    resources:
+        **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
+    log:
+        "logs/05.ATAC_QC/ataqv_qc_macs2_{sample}.log",
+    message:
+        "Running ataqv QC (MACS2) on {wildcards.sample}",
     params:
         tss = config['Bowtie2_index'][config['Genome_Version']]['tss_bed'],
         autosomes = config['Bowtie2_index'][config['Genome_Version']]['autosomes'],
@@ -133,8 +156,10 @@ rule multiqc_ATAC_QC:
     high-quality samples proceed to downstream analysis.
     """
     input:
-        json = expand("02.mapping/ataqv/{sample}.ataqv.json",sample=samples.keys()),
-        log_out = expand("02.mapping/ataqv/{sample}.ataqv.out",sample=samples.keys()),
+        json_macs3 = expand("02.mapping/ataqv_macs3/{sample}.ataqv.json",sample=samples.keys()),
+        log_out_macs3 = expand("02.mapping/ataqv_macs3/{sample}.ataqv.out",sample=samples.keys()),
+        json_macs2 = expand("02.mapping/ataqv_macs2/{sample}.ataqv.json",sample=samples.keys()),
+        log_out_macs2 = expand("02.mapping/ataqv_macs2/{sample}.ataqv.out",sample=samples.keys()),
         samtools_flagstat = expand('02.mapping/samtools_flagstat/{sample}_bam_flagstat.tsv',sample=samples.keys()),
         samtools_stats = expand('02.mapping/samtools_stats/{sample}_bam_stats.tsv',sample=samples.keys()),
     output:
@@ -167,32 +192,10 @@ rule multiqc_ATAC_QC:
 
 rule multiqc_macs2_samples:
     """
-    Aggregate MACS2 peak calling reports from individual samples using MultiQC.
-
-    This rule collects the MACS2 output from each individual sample and synthesizes
-    them into a single interactive HTML report that enables cross-sample comparison
-    of peak calling statistics. MultiQC parses the MACS2 XLS output files to
-    extract key peak calling metrics and present them in a visual format.
-
-    Key MACS2 metrics aggregated include:
-    - Number of peaks called per sample
-    - Peak width distributions across samples
-    - Fragment length estimates from MACS2 modeling
-    - Peak calling statistics (q-values, fold changes, etc.)
-    - Comparison of peak calling results across all samples
-
-    The aggregated report enables rapid identification of:
-    - Samples with unusually high or low numbers of peaks
-    - Systematic differences in peak calling characteristics
-    - Outlier samples that may require reanalysis
-    - Overall consistency of peak calling across the experiment
-
-    This summary of peak calling results provides valuable quality control information
-    about the peak calling step and helps identify any issues that may affect
-    downstream differential accessibility analysis.
+    Aggregate MACS2 single-sample peak calling reports using MultiQC.
     """
     input:
-        xls = expand("03.peak_calling/single/{sample}/{sample}_peaks.xls",sample=samples.keys())
+        xls = expand("03.peak_calling/single_macs2/{sample}/{sample}_peaks.xls",sample=samples.keys())
     output:
         report = '05.ATAC_QC/multiqc_MACS2_Samples_report.html',
     resources:
@@ -200,16 +203,16 @@ rule multiqc_macs2_samples:
     conda:
         workflow.source_path("../envs/multiqc.yaml"),
     message:
-        "Running MultiQC to aggregate MACS2",
+        "Running MultiQC to aggregate MACS2 single-sample reports",
     benchmark:
-        "benchmarks/05.ATAC_QC/multiqc_MACS2_Samples_report.txt",
+        "benchmarks/05.ATAC_QC/multiqc_macs2_samples.txt",
     params:
-        origin_reports = "03.peak_calling/",
+        origin_reports = "03.peak_calling/single_macs2/",
         report_dir = "05.ATAC_QC/",
         report = "multiqc_MACS2_Samples_report.html",
         title = "MACS2_Samples_report",
     log:
-        "logs/05.ATAC_QC/multiqc_MACS2_Samples_report.log",
+        "logs/05.ATAC_QC/multiqc_macs2_samples.log",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:
@@ -221,51 +224,63 @@ rule multiqc_macs2_samples:
                 -n {params.report} &> {log}
         """
 
-rule multiqc_macs2_group:
+rule multiqc_macs3_samples:
     """
-    Aggregate MACS2 peak calling reports including both individual and group-level analyses.
-
-    This rule collects MACS2 outputs from both individual samples and merged group
-    analyses, synthesizing them into a comprehensive report that enables comparison
-    of peak calling results at both levels. This is particularly valuable for
-    experiments with biological replicates where both sample-level and group-level
-    peak calling are performed.
-
-    Key features of this comprehensive report:
-    - Includes peak calling statistics from all individual samples
-    - Includes peak calling statistics from all merged group analyses
-    - Enables comparison of individual vs. group-level peak calling results
-    - Shows how merging replicates affects peak calling statistics
-
-    The aggregated report helps assess:
-    - The benefit of merging replicates for peak calling sensitivity
-    - Consistency between individual and group-level results
-    - Quality of both sample-level and group-level peak calls
-    - Overall robustness of the peak calling strategy
-
-    This comprehensive view of peak calling results at multiple levels provides
-    valuable insights into the experiment and helps validate the analytical approach.
+    Aggregate MACS3 single-sample peak calling reports using MultiQC.
     """
     input:
-        xls =  expand("03.peak_calling/single/{sample}/{sample}_peaks.xls",sample=samples.keys()),
-        group_xls = expand("03.peak_calling/pooled/{group}/{group}_peaks.xls",group = groups.keys()),
+        narrow_peak = expand("03.peak_calling/single_macs3/{sample}/{sample}_peaks.narrowPeak",sample=samples.keys())
     output:
-        report = '05.ATAC_QC/multiqc_MACS2_Merge_report.html',
+        report = '05.ATAC_QC/multiqc_MACS3_Samples_report.html',
     resources:
         **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
     conda:
         workflow.source_path("../envs/multiqc.yaml"),
     message:
-        "Running MultiQC to aggregate MACS2",
+        "Running MultiQC to aggregate MACS3 single-sample reports",
     benchmark:
-        "benchmarks/05.ATAC_QC/multiqc_macs2_group.txt",
+        "benchmarks/05.ATAC_QC/multiqc_macs3_samples.txt",
     params:
-        origin_reports = "03.peak_calling/",
+        origin_reports = "03.peak_calling/single_macs3/",
         report_dir = "05.ATAC_QC/",
-        report = "multiqc_MACS2_Merge_report.html",
-        title = "MACS2_Merge_report",
+        report = "multiqc_MACS3_Samples_report.html",
+        title = "MACS3_Samples_report",
     log:
-        "logs/05.ATAC_QC/multiqc_macs2_group.log",
+        "logs/05.ATAC_QC/multiqc_macs3_samples.log",
+    threads:
+        config['parameter']['threads']['multiqc'],
+    shell:
+        """
+        multiqc {params.origin_reports} \
+                --force \
+                --outdir {params.report_dir} \
+                -i {params.title} \
+                -n {params.report} &> {log}
+        """
+
+rule multiqc_pooled:
+    """
+    Aggregate pooled group-level peak calling reports using MultiQC.
+    """
+    input:
+        group_xls = expand("03.peak_calling/pooled/{group}/{group}_peaks.xls",group=groups.keys())
+    output:
+        report = '05.ATAC_QC/multiqc_Pooled_report.html',
+    resources:
+        **rule_resource(config, 'low_resource',  skip_queue_on_local=True,logger = logger),
+    conda:
+        workflow.source_path("../envs/multiqc.yaml"),
+    message:
+        "Running MultiQC to aggregate pooled group reports",
+    benchmark:
+        "benchmarks/05.ATAC_QC/multiqc_pooled.txt",
+    params:
+        origin_reports = "03.peak_calling/pooled/",
+        report_dir = "05.ATAC_QC/",
+        report = "multiqc_Pooled_report.html",
+        title = "Pooled_report",
+    log:
+        "logs/05.ATAC_QC/multiqc_pooled.log",
     threads:
         config['parameter']['threads']['multiqc'],
     shell:
