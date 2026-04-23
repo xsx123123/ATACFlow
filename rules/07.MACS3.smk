@@ -50,10 +50,14 @@ rule macs3_callpeak_bed_shift:
     params:
         gsize = config['genome_info'][config['Genome_Version']]['effectiveGenomeSize'],
         qvalue = config['parameter']['macs2']['qvalue'],
-        outdir = "03.peak_calling/single_macs3/{sample}"
+        outdir = "03.peak_calling/single_macs3/{sample}",
+        tempdir = "03.peak_calling/tmp",
     shell:
         """
         mkdir -p {params.outdir}
+
+        export TMPDIR={params.tempdir}
+        mkdir -p $TMPDIR
 
         # Convert filtered BAM to BED
         bedtools bamtobed -i {input.bam} > {output.bed} 2>> {log}
