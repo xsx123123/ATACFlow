@@ -109,41 +109,42 @@ def peak_calling(samples: Dict = None, data_deliver: List = None) -> List:
     if data_deliver is None:
         data_deliver = []
 
+    # MACS2 single sample peaks
     data_deliver.extend(
         expand(
-            "03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak",
+            "03.peak_calling/single_macs2/{sample}/{sample}_peaks.narrowPeak",
             sample=samples.keys(),
         )
     )
     data_deliver.extend(
         expand(
-            "03.peak_calling/single/{sample}/{sample}_peaks.xls", sample=samples.keys()
+            "03.peak_calling/single_macs2/{sample}/{sample}_peaks.xls", sample=samples.keys()
         )
     )
     data_deliver.extend(
         expand(
-            "03.peak_calling/single/{sample}/{sample}_summits.bed",
+            "03.peak_calling/single_macs2/{sample}/{sample}_summits.bed",
             sample=samples.keys(),
         )
     )
     data_deliver.extend(
         expand(
-            "03.peak_calling/single/{sample}/{sample}_treat_pileup.bdg",
+            "03.peak_calling/single_macs2/{sample}/{sample}_treat_pileup.bdg",
             sample=samples.keys(),
         )
     )
     data_deliver.extend(
         expand(
-            "03.peak_calling/single_HOMER/{sample}_annotation.txt",
+            "03.peak_calling/single_macs2_HOMER/{sample}_annotation.txt",
             sample=samples.keys(),
         )
     )
     data_deliver.extend(
-        expand("03.peak_calling/single_HOMER/{sample}_stats.txt", sample=samples.keys())
+        expand("03.peak_calling/single_macs2_HOMER/{sample}_stats.txt", sample=samples.keys())
     )
     data_deliver.extend(
         expand(
-            "03.peak_calling/single/{sample}/{sample}_frip.txt", sample=samples.keys()
+            "03.peak_calling/single_macs2/{sample}/{sample}_frip.txt", sample=samples.keys()
         )
     )
     data_deliver.extend(
@@ -208,11 +209,11 @@ def consensus_peaks(samples: Dict = None, data_deliver: List = None) -> List:
     if data_deliver is None:
         data_deliver = []
 
-    data_deliver.append("04.consensus/single/all_samples_consensus_peaks.bed")
-    data_deliver.append("04.consensus/single/all_samples_consensus_peaks_annotation.txt")
-    data_deliver.append("04.consensus/single/consensus_counts_matrix.txt")
-    data_deliver.append("04.consensus/single/matrix_description.txt")
-    data_deliver.append("04.consensus/single/consensus_counts_matrix_ann.txt")
+    data_deliver.append("04.consensus/single_macs2/all_samples_consensus_peaks.bed")
+    data_deliver.append("04.consensus/single_macs2/all_samples_consensus_peaks_annotation.txt")
+    data_deliver.append("04.consensus/single_macs2/consensus_counts_matrix.txt")
+    data_deliver.append("04.consensus/single_macs2/matrix_description.txt")
+    data_deliver.append("04.consensus/single_macs2/consensus_counts_matrix_ann.txt")
 
     return data_deliver
 
@@ -384,7 +385,7 @@ def merge_group_analysis(groups: Dict = None, data_deliver: List = None) -> List
     data_deliver.append("04.consensus/pooled/matrix_description.txt")
     data_deliver.append("04.consensus/pooled/consensus_counts_matrix_ann.txt")
 
-    data_deliver.append("05.ATAC_QC/multiqc_MACS2_Merge_report.html")
+    data_deliver.append("05.ATAC_QC/multiqc_Pooled_report.html")
 
     return data_deliver
 
@@ -409,10 +410,10 @@ def atac_qc(
         data_deliver = []
 
     data_deliver.append("05.ATAC_QC/multiqc_ATAC_report.html")
+    data_deliver.append("05.ATAC_QC/multiqc_MACS2_Samples_report.html")
+    data_deliver.append("05.ATAC_QC/multiqc_MACS3_Samples_report.html")
 
-    if not run_pooled:
-        data_deliver.append("05.ATAC_QC/multiqc_MACS2_Samples_report.html")
-    else:
-        data_deliver.append("05.ATAC_QC/multiqc_MACS2_Merge_report.html")
+    if run_pooled:
+        data_deliver.append("05.ATAC_QC/multiqc_Pooled_report.html")
 
     return data_deliver
