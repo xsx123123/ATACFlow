@@ -73,7 +73,7 @@ Bowtie2_index:
     ITAG4.1:
       index: ITAG4.1/ITAG4.1_bowtie2_index/ITAG4.1_bowtie2_index
       chromap_index: ITAG4.1/S_lycopersicum_chromosomes.4.00.chromap
-      gene_gtf: ITAG4.1/ITAG4.1_gene_models.only_gene.gtf
+      gene_gtf: ITAG4.1/ITAG4.1_gene_models.genes.gtf
       genome_fa: ITAG4.1/S_lycopersicum_chromosomes.4.00.fa
       genome_gtf: ITAG4.1/ITAG4.1_gene_models.gtf
       genome_gff: ITAG4.1/ITAG4.1_gene_models.gff
