@@ -223,6 +223,7 @@ rule merge_peaks_by_group_macs2:
     threads: 1
     shell:
         """
+        mkdir -p $(dirname {log})
         mergePeaks {input} -d 250 > {output} 2> {log}
         """
 
@@ -273,7 +274,7 @@ rule create_all_consensus_peaks_macs2:
         """
         TMP_PEAKS=$(mktemp /tmp/all_peaks.XXXXXX.bed)
         cat {input} | sort -k1,1 -k2,2n > "$TMP_PEAKS"
-        mergePeaks -d 250 "$TMP_PEAKS" | awk 'BEGIN{{OFS="\t"}} NR==1{{next}} {{print $2,$3,$4,$1,$5,$8}}' > {output} 2> {log}
+        { mergePeaks -d 250 "$TMP_PEAKS" | awk 'BEGIN{{OFS="\t"}} NR==1{{next}} {{print $2,$3,$4,$1,$5,$8}}' > {output}; } 2> {log}
         rm -f "$TMP_PEAKS"
         """
 
