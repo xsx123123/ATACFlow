@@ -287,7 +287,7 @@ def get_diff_analysis_input(config: Dict = None, merge_group: bool = False) -> s
     )
 
     if use_pooled and merge_group:
-        return "04.consensus/pooled/consensus_counts_matrix_ann.txt"
+        return "04.consensus/pooled_macs3/consensus_counts_matrix_ann.txt"
     else:
         return "04.consensus/single/consensus_counts_matrix_ann.txt"
 
@@ -346,32 +346,32 @@ def merge_group_analysis(groups: Dict = None, data_deliver: List = None) -> List
 
     data_deliver.extend(
         expand(
-            "03.peak_calling/pooled/{group}/{group}_peaks.narrowPeak",
+            "03.peak_calling/pooled_macs3/{group}/{group}_peaks.narrowPeak",
             group=groups.keys(),
         )
     )
     data_deliver.extend(
-        expand("03.peak_calling/pooled/{group}/{group}_peaks.xls", group=groups.keys())
+        expand("03.peak_calling/pooled_macs3/{group}/{group}_peaks.xls", group=groups.keys())
     )
     data_deliver.extend(
         expand(
-            "03.peak_calling/pooled/{group}/{group}_summits.bed",
-            group=groups.keys(),
-        )
-    )
-    data_deliver.extend(
-        expand(
-            "03.peak_calling/pooled/{group}/{group}_treat_pileup.bdg",
+            "03.peak_calling/pooled_macs3/{group}/{group}_summits.bed",
             group=groups.keys(),
         )
     )
     data_deliver.extend(
         expand(
-            "03.peak_calling/pooled_HOMER/{group}_annotation.txt", group=groups.keys()
+            "03.peak_calling/pooled_macs3/{group}/{group}_treat_pileup.bdg",
+            group=groups.keys(),
         )
     )
     data_deliver.extend(
-        expand("03.peak_calling/pooled_HOMER/{group}_stats.txt", group=groups.keys())
+        expand(
+            "03.peak_calling/pooled_macs3_HOMER/{group}_annotation.txt", group=groups.keys()
+        )
+    )
+    data_deliver.extend(
+        expand("03.peak_calling/pooled_macs3_HOMER/{group}_stats.txt", group=groups.keys())
     )
 
     data_deliver.extend(
@@ -390,11 +390,11 @@ def merge_group_analysis(groups: Dict = None, data_deliver: List = None) -> List
         expand("03.peak_calling/idr_HOMER/{group}_stats.txt", group=groups.keys())
     )
 
-    data_deliver.append("04.consensus/pooled/all_groups_consensus_peaks.bed")
-    data_deliver.append("04.consensus/pooled/consensus_peaks_annotation.txt")
-    data_deliver.append("04.consensus/pooled/consensus_counts_matrix.txt")
-    data_deliver.append("04.consensus/pooled/matrix_description.txt")
-    data_deliver.append("04.consensus/pooled/consensus_counts_matrix_ann.txt")
+    data_deliver.append("04.consensus/pooled_macs3/all_groups_consensus_peaks.bed")
+    data_deliver.append("04.consensus/pooled_macs3/consensus_peaks_annotation.txt")
+    data_deliver.append("04.consensus/pooled_macs3/consensus_counts_matrix.txt")
+    data_deliver.append("04.consensus/pooled_macs3/matrix_description.txt")
+    data_deliver.append("04.consensus/pooled_macs3/consensus_counts_matrix_ann.txt")
 
     data_deliver.append("05.ATAC_QC/multiqc_Pooled_report.html")
 

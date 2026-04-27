@@ -1,21 +1,20 @@
 #!/usr/bin/snakemake
 # -*- coding: utf-8 -*-
 """
-ATACFlow Pipeline - Group-Level Analysis Module
+ATACFlow Pipeline - Group-Level Analysis Module (MACS3)
 
 This module handles group-level peak calling and IDR analysis for ATAC-seq data.
 It provides two distinct analysis workflows:
 
-1. POOLED ANALYSIS: Merge replicates within each group and call peaks
+1. POOLED ANALYSIS: Merge replicates within each group and call peaks using MACS3
 2. IDR ANALYSIS: Identify reproducible peaks across replicates using IDR
 
 Output Structure:
-- 03.peak_calling/pooled/{group}/ - Group-level pooled MACS2 results
-- 03.peak_calling/pooled_HOMER/ - Group-level HOMER annotations
+- 03.peak_calling/pooled_macs3/{group}/ - Group-level pooled MACS3 results
+- 03.peak_calling/pooled_macs3_HOMER/ - Group-level HOMER annotations
 - 03.peak_calling/idr/{group}/ - IDR analysis results
 - 03.peak_calling/idr_HOMER/ - IDR peak annotations
-- 04.consensus/pooled/ - Group consensus peaks
-- 04.consensus/idr/ - IDR-filtered high-confidence peaks
+- 04.consensus/pooled_macs3/ - Group consensus peaks
 """
 
 import os
@@ -50,72 +49,85 @@ rule merge_shifted_bams:
         samtools index -@ {threads} {output.bam} 2>> {log}
         """
 
-rule macs2_pooled_callpeak:
+rule macs3_pooled_callpeak:
     """
-    Identify peaks using MACS2 on merged group BAM files (Pooled Analysis).
+    Identify peaks using MACS3 on merged group BAM files (Pooled Analysis).
     
     This performs peak calling on merged BAM files from each experimental group,
     leveraging increased sequencing depth to identify more robust accessible
-    chromatin regions.
+    chromatin regions. Input BAMs are already Tn5-shifted, so no further shift
+    is applied.
     """
     input:
         bam = "02.mapping/merged/{group}.merged.bam",
         bai = "02.mapping/merged/{group}.merged.bam.bai"
     output:
-        narrow_peak = "03.peak_calling/pooled/{group}/{group}_peaks.narrowPeak",
-        xls = "03.peak_calling/pooled/{group}/{group}_peaks.xls",
-        summits = "03.peak_calling/pooled/{group}/{group}_summits.bed",
-        bdg = "03.peak_calling/pooled/{group}/{group}_treat_pileup.bdg"
+        bed = temp("03.peak_calling/pooled_macs3/{group}/{group}_clean.bed"),
+        narrow_peak = "03.peak_calling/pooled_macs3/{group}/{group}_peaks.narrowPeak",
+        xls = "03.peak_calling/pooled_macs3/{group}/{group}_peaks.xls",
+        summits = "03.peak_calling/pooled_macs3/{group}/{group}_summits.bed",
+        bdg = "03.peak_calling/pooled_macs3/{group}/{group}_treat_pileup.bdg"
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
-        workflow.source_path("../envs/macs2.yaml"),
+        workflow.source_path("../envs/macs3.yaml"),
     log:
-        "logs/03.peak_calling/pooled/macs2_pooled_callpeak_{group}.log",
+        "logs/03.peak_calling/pooled_macs3/macs3_pooled_callpeak_{group}.log",
     message:
-        "Running pooled MACS2 peak calling for {wildcards.group}",
+        "Running pooled MACS3 peak calling for {wildcards.group}",
     benchmark:
-        "benchmarks/03.peak_calling/pooled/macs2_pooled_callpeak_{group}.txt",
+        "benchmarks/03.peak_calling/pooled_macs3/macs3_pooled_callpeak_{group}.txt",
     threads:
         config['parameter']['threads']['macs2'],
     params:
         gsize = config['genome_info'][config['Genome_Version']]['effectiveGenomeSize'],
         qvalue = config['parameter']['macs2']['qvalue'],
-        outdir = "03.peak_calling/pooled/{group}"
+        outdir = "03.peak_calling/pooled_macs3/{group}",
+        tempdir = "03.peak_calling/tmp",
     shell:
         """
-        macs2 callpeak \
-            -t {input.bam} \
+        mkdir -p {params.outdir}
+
+        export TMPDIR={params.tempdir}
+        mkdir -p $TMPDIR
+
+        # Convert merged BAM to BED
+        bedtools bamtobed -i {input.bam} > {output.bed} 2>> {log}
+
+        macs3 callpeak \
+            -t {output.bed} \
+            -f BED \
+            --shift -75 \
+            --extsize 150 \
             --nomodel \
-            -f BAMPE \
             -g {params.gsize} \
             --name {wildcards.group} \
             --outdir {params.outdir} \
             -q {params.qvalue} \
             --keep-dup all \
             --call-summits \
-            -B --SPMR 2> {log}
+            -B --SPMR 2>> {log}
         """
 
-rule homer_annotate_pooled_peaks:
+rule homer_annotate_pooled_peaks_macs3:
     """
     Annotate group-level pooled peaks using HOMER.
     """
     input:
-        peak = "03.peak_calling/pooled/{group}/{group}_peaks.narrowPeak",
+        peak = "03.peak_calling/pooled_macs3/{group}/{group}_peaks.narrowPeak",
     output:
-        annotation = "03.peak_calling/pooled_HOMER/{group}_annotation.txt",
-        stats = "03.peak_calling/pooled_HOMER/{group}_stats.txt"
+        annotation = "03.peak_calling/pooled_macs3_HOMER/{group}_annotation.txt",
+        stats = "03.peak_calling/pooled_macs3_HOMER/{group}_stats.txt"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/03.peak_calling/pooled/homer_annotate_pooled_peaks_{group}.log",
+        "logs/03.peak_calling/pooled_macs3/homer_annotate_pooled_peaks_{group}.log",
     message:
-        "Running HOMER annotation for {wildcards.group} pooled peaks",
+        "Running HOMER annotation for {wildcards.group} pooled peaks (MACS3)",
     benchmark:
-        "benchmarks/03.peak_calling/pooled/homer_annotate_pooled_peaks_{group}.txt",
+        "benchmarks/03.peak_calling/pooled_macs3/homer_annotate_pooled_peaks_{group}.txt",
     threads: config['parameter']['threads']['homer']
     params:
         gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
@@ -128,7 +140,7 @@ rule homer_annotate_pooled_peaks:
             -p {threads} > {output.annotation} 2> {log}
         """
 
-rule create_pooled_consensus_peakset:
+rule create_pooled_consensus_peakset_macs3:
     """
     Create consensus peaks from group-level pooled peak calls.
     
@@ -136,19 +148,19 @@ rule create_pooled_consensus_peakset:
     consensus peakset for differential accessibility analysis.
     """
     input:
-        peaks = expand("03.peak_calling/pooled/{group}/{group}_peaks.narrowPeak", group=groups.keys())
+        peaks = expand("03.peak_calling/pooled_macs3/{group}/{group}_peaks.narrowPeak", group=groups.keys())
     output:
-        consensus = "04.consensus/pooled/all_groups_consensus_peaks.bed"
+        consensus = "04.consensus/pooled_macs3/all_groups_consensus_peaks.bed"
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
     log:
-        "logs/04.consensus/pooled/create_pooled_consensus_peakset.log",
+        "logs/04.consensus/pooled_macs3/create_pooled_consensus_peakset.log",
     message:
-        "Creating consensus peakset from pooled group peaks",
+        "Creating consensus peakset from pooled group peaks (MACS3)",
     benchmark:
-        "benchmarks/04.consensus/pooled/create_pooled_consensus_peakset.txt",
+        "benchmarks/04.consensus/pooled_macs3/create_pooled_consensus_peakset.txt",
     threads: config['parameter']['threads']['bedtools']
     shell:
         """        
@@ -157,25 +169,25 @@ rule create_pooled_consensus_peakset:
         bedtools merge -i stdin > {output.consensus} 2> {log}
         """
 
-rule homer_annotate_pooled_consensus_peaks:
+rule homer_annotate_pooled_consensus_peaks_macs3:
     """
     Annotate pooled consensus peaks using HOMER.
     """
     input:
-        consensus = "04.consensus/pooled/all_groups_consensus_peaks.bed"
+        consensus = "04.consensus/pooled_macs3/all_groups_consensus_peaks.bed"
     output:
-        annotation = "04.consensus/pooled/consensus_peaks_annotation.txt",
-        stats = "04.consensus/pooled/consensus_peaks_stats.txt"
+        annotation = "04.consensus/pooled_macs3/consensus_peaks_annotation.txt",
+        stats = "04.consensus/pooled_macs3/consensus_peaks_stats.txt"
     resources:
         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
     conda:
         workflow.source_path("../envs/homer.yaml"),
     log:
-        "logs/04.consensus/pooled/homer_annotate_pooled_consensus_peaks.log",
+        "logs/04.consensus/pooled_macs3/homer_annotate_pooled_consensus_peaks.log",
     message:
-        "Running HOMER annotation for pooled consensus peaks",
+        "Running HOMER annotation for pooled consensus peaks (MACS3)",
     benchmark:
-        "benchmarks/04.consensus/pooled/homer_annotate_pooled_consensus_peaks.txt",
+        "benchmarks/04.consensus/pooled_macs3/homer_annotate_pooled_consensus_peaks.txt",
     threads: config['parameter']['threads']['homer']
     params:
         gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
@@ -273,7 +285,7 @@ rule homer_annotate_idr_peaks:
             -p {threads} > {output.annotation} 2> {log}
         """
 
-rule generate_pooled_count_matrix:
+rule generate_pooled_count_matrix_macs3:
     """
     Generate count matrix using pooled consensus peaks for differential analysis.
     
@@ -282,72 +294,78 @@ rule generate_pooled_count_matrix:
     for statistical analysis.
     """
     input:
-        consensus = "04.consensus/pooled/all_groups_consensus_peaks.bed",
+        consensus = "04.consensus/pooled_macs3/all_groups_consensus_peaks.bed",
         bams = expand("02.mapping/shifted/{sample}.shifted.sorted.bam", sample=samples.keys())
     output:
-        counts_matrix = "04.consensus/pooled/consensus_counts_matrix.txt",
-        description = "04.consensus/pooled/matrix_description.txt",
-        summary = "04.consensus/pooled/consensus_counts_matrix.txt.summary",
-        saf = temp("04.consensus/pooled/consensus_peaks.saf")
+        counts_matrix = "04.consensus/pooled_macs3/consensus_counts_matrix.txt",
+        counts_clean = "04.consensus/pooled_macs3/consensus_counts_matrix.clean.txt",
+        description = "04.consensus/pooled_macs3/matrix_description.txt",
+        summary = "04.consensus/pooled_macs3/consensus_counts_matrix.txt.summary",
+        saf = temp("04.consensus/pooled_macs3/consensus_peaks.saf")
     message:
-        "Running generate_pooled_count_matrix",
+        "Running generate_pooled_count_matrix (MACS3)",
     conda:
         workflow.source_path("../envs/subread.yaml"),
     resources:
         **rule_resource(config, 'high_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/04.consensus/pooled/generate_pooled_count_matrix.log"
+        "logs/04.consensus/pooled_macs3/generate_pooled_count_matrix.log"
     benchmark:
-        "benchmarks/04.consensus/pooled/generate_pooled_count_matrix.txt"
+        "benchmarks/04.consensus/pooled_macs3/generate_pooled_count_matrix.txt"
     threads: 
         config['parameter']['threads'].get('featurecounts', 16)
+    params:
+        sample_count = len(samples),
     shell:
-        """
-        echo "1. Converting consensus BED to SAF format..." > {log}
-        awk 'BEGIN{{OFS="\\t"; print "GeneID\\tChr\\tStart\\tEnd\\tStrand"}} \
+        r"""
+        echo "Step 1/4: Converting consensus BED to SAF format..." > {log}
+        awk 'BEGIN{{OFS="\t"; print "GeneID\tChr\tStart\tEnd\tStrand"}} \
             {{print $1":"$2"-"$3, $1, $2, $3, "+"}}' {input.consensus} > {output.saf}
 
-        echo "2. Running featureCounts for ATAC-seq PE fragments..." >> {log}
+        echo "Step 2/4: Running featureCounts for ATAC-seq PE fragments..." >> {log}
         featureCounts \
             -p \
             -B \
             -C \
+            --largestOverlap \
+            --primary \
             -T {threads} \
             -F SAF \
             -a {output.saf} \
             -o {output.counts_matrix} \
             {input.bams} >> {log} 2>&1
             
-        echo "3. Cleaning up matrix header..." >> {log}
-        sed -i 's|02.mapping/shifted/||g; s|.shifted.sorted.bam||g' {output.counts_matrix}
+        echo "Step 3/4: Cleaning up matrix header..." >> {log}
+        awk 'NR==1 {{gsub(/02.mapping\/shifted\//,""); gsub(/\.shifted\.sorted\.bam/,""); print}} \
+             NR>1 {{print}}' {output.counts_matrix} > {output.counts_clean}
 
-        echo "4. Generating description file..." >> {log}
-        echo "File Name: $(basename {output.counts_matrix})" > {output.description}
-        echo "Generated Date: $(date +'%Y-%m-%d %H:%M:%S')" >> {output.description}
-        echo "--------------------------------------------------" >> {output.description}
-        echo "Total Samples: $(echo "{input.bams}" | wc -w)" >> {output.description}
-        echo "Total Consensus Peaks: $(wc -l < {input.consensus})" >> {output.description}
+        echo "Step 4/4: Generating description file..." >> {log}
+        printf "ATAC-seq Consensus Peak Count Matrix\n" > {output.description}
+        printf "Generated: %s\n" "$(date +'%%Y-%%m-%%d %%H:%%M:%%S')" >> {output.description}
+        printf "Samples: %d\n" {params.sample_count} >> {output.description}
+        printf "Peaks: %d\n" $(wc -l < {input.consensus}) >> {output.description}
+        printf "FeatureCounts Version: %s\n" "$(featureCounts -v 2>&1 | head -1)" >> {output.description}
         """
 
-rule generate_pooled_count_matrix_ann:
+rule generate_pooled_count_matrix_ann_macs3:
     """
     Add gene annotation to the pooled consensus count matrix.
     """
     input:
-        annotation = "04.consensus/pooled/consensus_peaks_annotation.txt",
-        counts_matrix = "04.consensus/pooled/consensus_counts_matrix.txt",
+        annotation = "04.consensus/pooled_macs3/consensus_peaks_annotation.txt",
+        counts_matrix = "04.consensus/pooled_macs3/consensus_counts_matrix.txt",
     output:
-        counts_matrix_ann = "04.consensus/pooled/consensus_counts_matrix_ann.txt",
+        counts_matrix_ann = "04.consensus/pooled_macs3/consensus_counts_matrix_ann.txt",
     message:
-        "Running generate_pooled_count_matrix_ann",
+        "Running generate_pooled_count_matrix_ann (MACS3)",
     conda:
         workflow.source_path("../envs/bedtools.yaml"),
     resources:
         **rule_resource(config, 'low_resource', skip_queue_on_local=True, logger=logger),
     log:
-        "logs/04.consensus/pooled/generate_pooled_count_matrix_ann.log",
+        "logs/04.consensus/pooled_macs3/generate_pooled_count_matrix_ann.log",
     benchmark:
-        "benchmarks/04.consensus/pooled/generate_pooled_count_matrix_ann.txt",
+        "benchmarks/04.consensus/pooled_macs3/generate_pooled_count_matrix_ann.txt",
     params:
         path = workflow.source_path(config['parameter']['merge_peaks']['path'])
     threads: 
