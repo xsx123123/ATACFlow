@@ -167,8 +167,13 @@ def peak_calling(samples: Dict = None, data_deliver: List = None) -> List:
             "03.peak_calling/single_macs3/{sample}/{sample}_treat_pileup.bdg", sample=samples.keys()
         )
     )
+    data_deliver.extend(
+        expand(
+            "03.peak_calling/single_macs3/{sample}/{sample}_frip.txt", sample=samples.keys()
+        )
+    )
 
-
+    
     return data_deliver
 
 
@@ -214,6 +219,12 @@ def consensus_peaks(samples: Dict = None, data_deliver: List = None) -> List:
     data_deliver.append("04.consensus/single_macs2/consensus_counts_matrix.txt")
     data_deliver.append("04.consensus/single_macs2/matrix_description.txt")
     data_deliver.append("04.consensus/single_macs2/consensus_counts_matrix_ann.txt")
+
+    data_deliver.append("04.consensus/single_macs3/all_samples_consensus_peaks.bed")
+    data_deliver.append("04.consensus/single_macs3/all_samples_consensus_peaks_annotation.txt")
+    data_deliver.append("04.consensus/single_macs3/consensus_counts_matrix.txt")
+    data_deliver.append("04.consensus/single_macs3/matrix_description.txt")
+    data_deliver.append("04.consensus/single_macs3/consensus_counts_matrix_ann.txt")
 
     return data_deliver
 
