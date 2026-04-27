@@ -263,7 +263,7 @@ rule multiqc_pooled:
     Aggregate pooled group-level peak calling reports using MultiQC.
     """
     input:
-        group_xls = expand("03.peak_calling/pooled/{group}/{group}_peaks.xls",group=groups.keys())
+        group_xls = expand("03.peak_calling/pooled_macs3/{group}/{group}_peaks.xls",group=groups.keys())
     output:
         report = '05.ATAC_QC/multiqc_Pooled_report.html',
     resources:
@@ -275,7 +275,7 @@ rule multiqc_pooled:
     benchmark:
         "benchmarks/05.ATAC_QC/multiqc_pooled.txt",
     params:
-        origin_reports = "03.peak_calling/pooled/",
+        origin_reports = "03.peak_calling/pooled_macs3/",
         report_dir = "05.ATAC_QC/",
         report = "multiqc_Pooled_report.html",
         title = "Pooled_report",

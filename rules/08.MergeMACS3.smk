@@ -200,91 +200,91 @@ rule homer_annotate_pooled_consensus_peaks_macs3:
             -p {threads} > {output.annotation} 2> {log}
         """
 
-rule idr_analysis:
-    """
-    Perform Irreproducible Discovery Rate (IDR) analysis on group replicates.
-    
-    Identifies reproducible peaks across biological replicates within a group
-    using the IDR framework. For groups with only one replicate, returns the
-    original peaks as consensus.
-    
-    NOTE: IDR-filtered peaks are used for QC reporting, but differential analysis
-    uses the pooled consensus peaks for sufficient coverage.
-    """
-    input:
-        peaks = lambda wildcards: expand("03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak",
-            sample=groups[wildcards.group]
-        )
-    output:
-        idr_bed = "03.peak_calling/idr/{group}/Final_Consensus_Peaks.bed",
-        idr_log = "03.peak_calling/idr/{group}/idr_pipeline.log",
-    resources:
-        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
-    message:
-        "Running idr_analysis",
-    conda:
-        workflow.source_path("../envs/idr.yaml"),
-    log:
-        "logs/03.peak_calling/idr/idr_analysis_{group}.log"
-    benchmark:
-        "benchmarks/03.peak_calling/idr/idr_analysis_{group}.txt"
-    threads:
-        config['parameter']['threads'].get('idr', 4)
-    params:
-        script = workflow.source_path(config["parameter"]["idr_scripts"]["path"]),
-        outdir = "03.peak_calling/idr/{group}"
-    shell:
-        """
-        mkdir -p {params.outdir}
-
-        peak_count=$(echo "{input.peaks}" | wc -w)
-
-        if [ "$peak_count" -ge 2 ]; then
-            echo "[$(date)] Running IDR for group {wildcards.group} with $peak_count replicates..." > {log}
-            python3 {params.script} \
-                -i {input.peaks} \
-                -o {params.outdir} \
-                -t {threads} >> {log} 2>&1
-        else
-            echo "[$(date)] Group {wildcards.group} has only one replicate. Using original peaks..." >> {log}
-            awk 'BEGIN{{OFS="\\t"}} {{print $1, $2, $3}}' {input.peaks} | \
-            sort -k1,1 -k2,2n | \
-            bedtools merge > {output.idr_bed} 2>> {log}
-        fi
-        """
-
-rule homer_annotate_idr_peaks:
-    """
-    Annotate IDR-filtered consensus peaks using HOMER.
-    """
-    input:
-        idr_peaks = "03.peak_calling/idr/{group}/Final_Consensus_Peaks.bed",
-    output:
-        annotation = "03.peak_calling/idr_HOMER/{group}_annotation.txt",
-        stats = "03.peak_calling/idr_HOMER/{group}_stats.txt",
-    resources:
-        **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
-    conda:
-        workflow.source_path("../envs/homer.yaml"),
-    log:
-        "logs/03.peak_calling/idr/homer_annotate_idr_peaks_{group}.log",
-    message:
-        "Running HOMER annotation for {wildcards.group} IDR peaks",
-    benchmark:
-        "benchmarks/03.peak_calling/idr/homer_annotate_idr_peaks_{group}.txt",
-    params:
-        gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
-        genome_fasta = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
-    threads: 
-        config['parameter']['threads']['homer'],
-    shell:
-        """
-        annotatePeaks.pl {input.idr_peaks} {params.genome_fasta} \
-            -gtf {params.gtf} \
-            -annStats {output.stats} \
-            -p {threads} > {output.annotation} 2> {log}
-        """
-
+# rule idr_analysis:
+#     """
+#     Perform Irreproducible Discovery Rate (IDR) analysis on group replicates.
+#     
+#     Identifies reproducible peaks across biological replicates within a group
+#     using the IDR framework. For groups with only one replicate, returns the
+#     original peaks as consensus.
+#     
+#     NOTE: IDR-filtered peaks are used for QC reporting, but differential analysis
+#     uses the pooled consensus peaks for sufficient coverage.
+#     """
+#     input:
+#         peaks = lambda wildcards: expand("03.peak_calling/single/{sample}/{sample}_peaks.narrowPeak",
+#             sample=groups[wildcards.group]
+#         )
+#     output:
+#         idr_bed = "03.peak_calling/idr/{group}/Final_Consensus_Peaks.bed",
+#         idr_log = "03.peak_calling/idr/{group}/idr_pipeline.log",
+#     resources:
+#         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
+#     message:
+#         "Running idr_analysis",
+#     conda:
+#         workflow.source_path("../envs/idr.yaml"),
+#     log:
+#         "logs/03.peak_calling/idr/idr_analysis_{group}.log"
+#     benchmark:
+#         "benchmarks/03.peak_calling/idr/idr_analysis_{group}.txt"
+#     threads:
+#         config['parameter']['threads'].get('idr', 4)
+#     params:
+#         script = workflow.source_path(config["parameter"]["idr_scripts"]["path"]),
+#         outdir = "03.peak_calling/idr/{group}"
+#     shell:
+#         """
+#         mkdir -p {params.outdir}
+# 
+#         peak_count=$(echo "{input.peaks}" | wc -w)
+# 
+#         if [ "$peak_count" -ge 2 ]; then
+#             echo "[$(date)] Running IDR for group {wildcards.group} with $peak_count replicates..." > {log}
+#             python3 {params.script} \
+#                 -i {input.peaks} \
+#                 -o {params.outdir} \
+#                 -t {threads} >> {log} 2>&1
+#         else
+#             echo "[$(date)] Group {wildcards.group} has only one replicate. Using original peaks..." >> {log}
+#             awk 'BEGIN{{OFS="\\t"}} {{print $1, $2, $3}}' {input.peaks} | \
+#             sort -k1,1 -k2,2n | \
+#             bedtools merge > {output.idr_bed} 2>> {log}
+#         fi
+#         """
+# 
+# rule homer_annotate_idr_peaks:
+#     """
+#     Annotate IDR-filtered consensus peaks using HOMER.
+#     """
+#     input:
+#         idr_peaks = "03.peak_calling/idr/{group}/Final_Consensus_Peaks.bed",
+#     output:
+#         annotation = "03.peak_calling/idr_HOMER/{group}_annotation.txt",
+#         stats = "03.peak_calling/idr_HOMER/{group}_stats.txt",
+#     resources:
+#         **rule_resource(config, 'medium_resource', skip_queue_on_local=True, logger=logger),
+#     conda:
+#         workflow.source_path("../envs/homer.yaml"),
+#     log:
+#         "logs/03.peak_calling/idr/homer_annotate_idr_peaks_{group}.log",
+#     message:
+#         "Running HOMER annotation for {wildcards.group} IDR peaks",
+#     benchmark:
+#         "benchmarks/03.peak_calling/idr/homer_annotate_idr_peaks_{group}.txt",
+#     params:
+#         gtf = config['Bowtie2_index'][config['Genome_Version']]['genome_gtf'],
+#         genome_fasta = config['Bowtie2_index'][config['Genome_Version']]['genome_fa'],
+#     threads: 
+#         config['parameter']['threads']['homer'],
+#     shell:
+#         """
+#         annotatePeaks.pl {input.idr_peaks} {params.genome_fasta} \
+#             -gtf {params.gtf} \
+#             -annStats {output.stats} \
+#             -p {threads} > {output.annotation} 2> {log}
+#         """
+# 
 rule generate_pooled_count_matrix_macs3:
     """
     Generate count matrix using pooled consensus peaks for differential analysis.

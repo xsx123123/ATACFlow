@@ -374,21 +374,22 @@ def merge_group_analysis(groups: Dict = None, data_deliver: List = None) -> List
         expand("03.peak_calling/pooled_macs3_HOMER/{group}_stats.txt", group=groups.keys())
     )
 
-    data_deliver.extend(
-        expand(
-            "03.peak_calling/idr/{group}/Final_Consensus_Peaks.bed",
-            group=groups.keys(),
-        )
-    )
-    data_deliver.extend(
-        expand(
-            "03.peak_calling/idr_HOMER/{group}_annotation.txt",
-            group=groups.keys(),
-        )
-    )
-    data_deliver.extend(
-        expand("03.peak_calling/idr_HOMER/{group}_stats.txt", group=groups.keys())
-    )
+    # IDR analysis disabled
+    # data_deliver.extend(
+    #     expand(
+    #         "03.peak_calling/idr/{group}/Final_Consensus_Peaks.bed",
+    #         group=groups.keys(),
+    #     )
+    # )
+    # data_deliver.extend(
+    #     expand(
+    #         "03.peak_calling/idr_HOMER/{group}_annotation.txt",
+    #         group=groups.keys(),
+    #     )
+    # )
+    # data_deliver.extend(
+    #     expand("03.peak_calling/idr_HOMER/{group}_stats.txt", group=groups.keys())
+    # )
 
     data_deliver.append("04.consensus/pooled_macs3/all_groups_consensus_peaks.bed")
     data_deliver.append("04.consensus/pooled_macs3/consensus_peaks_annotation.txt")
